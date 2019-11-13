@@ -20,6 +20,25 @@ if sys.version_info < (3,):
 else:
     _ = TRANSLATION_CATALOG.gettext
 
+__doc__ = (
+    _(
+        """
+grabbag.py is an enhancement on the bagit-python for dealing with lots of bags.
+Command-Line Usage:
+Basic usage is to give bagit.py a directory to bag up:
+    $ grabbag.py my_directory
+This does a bag-in-place operation for each sub-folder of my_directory.
+You can bag sub-folders from multiple directories if you wish:
+    $ grabbag.py directory1 directory2
+Optionally you can provide metadata which will be stored in bag-info.txt:
+    $ grabbag.py --source-organization "Library of Congress" directory
+You can also select which manifest algorithms will be used:
+    $ grabbag.py --sha1 --md5 --sha256 --sha512 directory
+"""
+    )
+    % globals()
+)
+
 class BagArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         argparse.ArgumentParser.__init__(self, *args, **kwargs)
@@ -112,9 +131,10 @@ def _make_parser():
         "directory",
         nargs="+",
         help=_(
-            "Directory which will be converted into a bag in place"
-            " by moving any existing files into the BagIt structure"
-            " and creating the manifests and other metadata."
+            "Parent directory of directory which will be converted"
+            " into a bag in place by moving any existing files into"
+            " the BagIt structure and creating the manifests and"
+            " other metadata."
         ),
     )
 
@@ -144,6 +164,8 @@ def main():
         parser.error(_("--fast is only allowed as an option for --validate!"))
 
     _configure_logging(args)
+
+
 
 
 if __name__ == "__main__":
