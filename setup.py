@@ -8,5 +8,17 @@ setup(
     license='',
     author='AMIA',
     author_email='',
-    description=''
+    description='',
+    test_suite='tests',
+    install_requires=[
+        "bagit"
+    ],
+    tests_require=[
+        'pytest',
+    ],
+    setup_requires=[
+        'pytest'
+    ],
+
+
 )
