@@ -33,4 +33,6 @@ def is_system_file(file_path) -> bool:
     if len(res) > 0:
         return True
 
+    # TODO: Validate if Apple Icon file
+
     return False
