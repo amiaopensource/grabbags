@@ -18,7 +18,7 @@
     On Windows:
     ```venv/Scripts/activate```
 
-3) install the grabbags in development mode
+3) Install the grabbags in development mode
 
     ```python -m pip install -e .```
 
