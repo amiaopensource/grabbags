@@ -1,7 +1,5 @@
 import os
 import re
-import shutil
-
 
 SYSTEM_FILES = [
     ".DS_Store",
