@@ -5,6 +5,9 @@ import logging
 import os
 import re
 import sys
+from grabbags.bags import is_bag
+import grabbags.utils
+
 
 def find_locale_dir():
     for prefix in (os.path.dirname(__file__), sys.prefix):
@@ -128,7 +131,7 @@ def _make_parser():
         )
 
     parser.add_argument(
-        "directory",
+        "directories",
         nargs="+",
         help=_(
             "Parent directory of directory which will be converted"
@@ -164,8 +167,25 @@ def main():
         parser.error(_("--fast is only allowed as an option for --validate!"))
 
     _configure_logging(args)
+    for bag_parent in args.directories:
+        for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
+            print(bag_dir.path)
 
+            if is_bag(bag_dir.path):
+                print("{} is already a bag".format(bag_dir.path))
+                continue
 
+            if args.no_system_files is True:
+                print("Cleaning {} of system files".format(bag_dir.path))
+                grabbags.utils.remove_system_files(root=bag_dir.path)
+
+            bag = bagit.make_bag(
+                bag_dir.path,
+                bag_info=args.bag_info,
+                processes=args.processes,
+                checksums=args.checksums)
+
+            print(bag)
 
 
 if __name__ == "__main__":

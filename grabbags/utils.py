@@ -1,5 +1,7 @@
 import os
 import re
+import shutil
+
 
 SYSTEM_FILES = [
     ".DS_Store",
@@ -36,3 +38,13 @@ def is_system_file(file_path) -> bool:
     # TODO: Validate if Apple Icon file
 
     return False
+
+
+def remove_system_files(root) -> None:
+    for root, dirs, files in os.walk(root):
+        for file_ in files:
+            full_path = os.path.join(root, file_)
+
+            if is_system_file(full_path):
+                print("Removing {}".format(full_path))
+                os.remove(full_path)
