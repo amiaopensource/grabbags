@@ -63,6 +63,7 @@ def _make_parser():
         ),
     )
     parser.add_argument(
+        "--no-checksums",
         "--completeness-only",
         action="store_true",
         help=_(
