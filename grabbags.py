@@ -1,6 +1,7 @@
 import argparse
 import bagit
 import gettext
+import logging
 import os
 import re
 import sys
@@ -68,6 +69,16 @@ def _make_parser():
             "Modify --validate behaviour to test whether the bag directory"
             " has the expected payload specified in the checksum manifests"
             " without performing checksum validation to detect corruption."
+        ),
+    )
+
+    parser.add_argument(
+        "--no-system-files",
+        action="store_true",
+        help=_(
+            "Modify bag creation to delete any system files before bagging"
+            " The following files will be deleted: .DS_Store, Thumbs.db, "
+            " Appledoubles (._*), Icon files"
         ),
     )
 
