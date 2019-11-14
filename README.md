@@ -7,7 +7,7 @@
 Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also elminate system files before bagging. 
 
 ## Installing grabbags
-For installation, see getting_started.md
+For installation, see [getting_started.md](getting_started.md)
 
 ## Using grabbags
 
@@ -35,7 +35,5 @@ The default behavior of `$ grabbags --validate` is to validate the bag by compar
 Users can optionally use the flags `--validate --no--checksums`. This only validates the Oxsum of the bag, the number of files, and the proper files according to the bagit specification. Using the --no-checksums flag is equivalent to running `--validate --completeness-only`
 
 ## Enhanced Logging
-At the end of the 
-
-Just as in bagit python, users can use the `--log (path to place log file)` flag to create a log when creating or validating bags. At the end of the output grabbags will display summary data about the numbers of bags created or validated.
+Just as in bagit python, users can use the `--log (path to place log file)` flag to create a log when creating or validating bags. At the end of the output grabbags will display summary data about the numbers of bags created or validated (number of successes, number of failures and path to all failures).
 
