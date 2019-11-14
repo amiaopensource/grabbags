@@ -15,6 +15,7 @@ def find_locale_dir():
         if os.path.isdir(locale_dir):
             return locale_dir
 
+
 TRANSLATION_CATALOG = gettext.translation(
     "bagit-python", localedir=find_locale_dir(), fallback=True
 )
@@ -22,6 +23,10 @@ if sys.version_info < (3,):
     _ = TRANSLATION_CATALOG.ugettext
 else:
     _ = TRANSLATION_CATALOG.gettext
+
+MODULE_NAME = "grabbags" if __name__ == "__main__" else __name__    
+
+LOGGER = logging.getLogger(MODULE_NAME)
 
 __doc__ = (
     _(
@@ -42,10 +47,12 @@ You can also select which manifest algorithms will be used:
     % globals()
 )
 
+
 class BagArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         argparse.ArgumentParser.__init__(self, *args, **kwargs)
         self.set_defaults(bag_info={})
+
 
 def _make_parser():
     parser = BagArgumentParser(
@@ -170,23 +177,47 @@ def main():
     _configure_logging(args)
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
-            print(bag_dir.path)
+            if args.validate:
+                if not is_bag(bag_dir.path):
+                    LOGGER.info(_("%s is not a bag"), bag_dir.path)
+                    continue
 
-            if is_bag(bag_dir.path):
-                print("{} is already a bag".format(bag_dir.path))
-                continue
+                try:
+                    bag = bagit.Bag(bag_dir.path)
+                    # validate throws a BagError or BagValidationError
+                    bag.validate(
+                        processes=args.processes,
+                        fast=args.fast,
+                        completeness_only=args.no_checksums,
+                    )
+                    if args.fast:
+                        LOGGER.error(_("%s valid according to Payload-Oxum"), bag_dir.path)
+                    elif args.no_checksums:
+                        LOGGER.error(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
+                    else:
+                        LOGGER.error(_("%s is valid"), bag_dir.path)
+                except bagit.BagError as e:
+                    LOGGER.error(
+                        _("%(bag)s is invalid: %(error)s"), {"bag": bag_dir.path, "error": e}
+                    )
+            else:
+                print(bag_dir.path)
 
-            if args.no_system_files is True:
-                print("Cleaning {} of system files".format(bag_dir.path))
-                grabbags.utils.remove_system_files(root=bag_dir.path)
+                if is_bag(bag_dir.path):
+                    LOGGER.info(_("%s is already a bag"), bag_dir.path)
+                    continue
 
-            bag = bagit.make_bag(
-                bag_dir.path,
-                bag_info=args.bag_info,
-                processes=args.processes,
-                checksums=args.checksums)
+                if args.no_system_files is True:
+                    LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
+                    grabbags.utils.remove_system_files(root=bag_dir.path)
 
-            print(bag)
+                bag = bagit.make_bag(
+                    bag_dir.path,
+                    bag_info=args.bag_info,
+                    processes=args.processes,
+                    checksums=args.checksums)
+
+                LOGGER.info(_("Bagged %s"), bag_dir.path)
 
 
 if __name__ == "__main__":
