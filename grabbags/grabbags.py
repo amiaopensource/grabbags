@@ -154,7 +154,7 @@ def _make_parser():
 def _configure_logging(opts):
     log_format = "%(asctime)s - %(levelname)s - %(message)s"
     if opts.quiet:
-        level = logging.ERROR
+        level = logging.WARN
     else:
         level = logging.INFO
     if opts.log:
@@ -175,11 +175,15 @@ def main():
         parser.error(_("--fast is only allowed as an option for --validate!"))
 
     _configure_logging(args)
+
+    successes = []
+    failures = []
+
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
                 if not is_bag(bag_dir.path):
-                    LOGGER.info(_("%s is not a bag"), bag_dir.path)
+                    LOGGER.warn(_("%s is not a bag. Skipped."), bag_dir.path)
                     continue
 
                 try:
@@ -191,33 +195,53 @@ def main():
                         completeness_only=args.no_checksums,
                     )
                     if args.fast:
-                        LOGGER.error(_("%s valid according to Payload-Oxum"), bag_dir.path)
+                        LOGGER.info(_("%s valid according to Payload-Oxum"), bag_dir.path)
                     elif args.no_checksums:
-                        LOGGER.error(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
+                        LOGGER.info(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
                     else:
-                        LOGGER.error(_("%s is valid"), bag_dir.path)
+                        LOGGER.info(_("%s is valid"), bag_dir.path)
+                    successes.append(bag_dir.path)
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"), {"bag": bag_dir.path, "error": e}
                     )
+                    failures.append(bag_dir.path)
             else:
                 print(bag_dir.path)
 
                 if is_bag(bag_dir.path):
-                    LOGGER.info(_("%s is already a bag"), bag_dir.path)
+                    LOGGER.warn(_("%s is already a bag. Skipped."), bag_dir.path)
                     continue
 
                 if args.no_system_files is True:
                     LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
                     grabbags.utils.remove_system_files(root=bag_dir.path)
 
-                bag = bagit.make_bag(
-                    bag_dir.path,
-                    bag_info=args.bag_info,
-                    processes=args.processes,
-                    checksums=args.checksums)
+                try:
+                    bag = bagit.make_bag(
+                        bag_dir.path,
+                        bag_info=args.bag_info,
+                        processes=args.processes,
+                        checksums=args.checksums)
 
-                LOGGER.info(_("Bagged %s"), bag_dir.path)
+                    LOGGER.info(_("Bagged %s"), bag_dir.path)
+                    successes.append(bag_dir.path)
+                except bagit.BagError as e:
+                    LOGGER.error(
+                        _("%(bag)s could not be bagged: %(error)s"), {"bag": bag_dir.path, "error": e}
+                    )
+                    failures.append(bag_dir.path)
+
+    if args.validate:
+        action = "validated"
+    else:
+        action = "created"
+
+    LOGGER.warn(_("%(count)s bags %(action)s successfully"), {"count": len(successes), "action": action})
+    LOGGER.warn(_("%(count)s bags not %(action)s"), {"count": len(failures), "action": action})
+    LOGGER.warn(_("Failed for the following folders: %s"), ", ".join(failures))
+
+
 
 
 if __name__ == "__main__":
