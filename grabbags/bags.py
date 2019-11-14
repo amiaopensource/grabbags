@@ -7,7 +7,8 @@ def is_bag(path) -> bool:
     Args:
         path: path to potential bag root folder
 
-    Returns: True if determined it's a bag directory, or False if it's not
+    Returns:
+        True if determined it's a bag directory, or False if it's not
 
     """
 

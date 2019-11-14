@@ -15,6 +15,13 @@ def is_system_file(file_path) -> bool:
     This should be helpful for iterating over files and determine if a file in
     a packing can be removed.
 
+    Note:
+        Files that are identified as a system file are:
+
+            * .DS_Store
+            * Thumbs.db
+            * `AppleDouble files <https://en.wikipedia.org/wiki/AppleSingle_and_AppleDouble_formats>`_
+
     Returns:
         True if the file a system file,
         False if it's not
@@ -39,6 +46,17 @@ def is_system_file(file_path) -> bool:
 
 
 def remove_system_files(root) -> None:
+    """
+    Remove system nested within a directory. Files such as DS_Store & Thumbs.db
+
+    Note:
+
+        This function works recursively.
+
+    Args:
+        root: path to a folder
+
+    """
     for root, dirs, files in os.walk(root):
         for file_ in files:
             full_path = os.path.join(root, file_)
