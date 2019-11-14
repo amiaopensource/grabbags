@@ -177,6 +177,10 @@ def main():
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
+                if not is_bag(bag_dir.path):
+                    LOGGER.info(_("%s is not a bag"), bag_dir.path)
+                    continue
+
                 try:
                     bag = bagit.Bag(bag_dir.path)
                     # validate throws a BagError or BagValidationError
@@ -199,11 +203,11 @@ def main():
                 print(bag_dir.path)
 
                 if is_bag(bag_dir.path):
-                    LOGGER.info(_("%s is already a bag", bag_dir.path))
+                    LOGGER.info(_("%s is already a bag"), bag_dir.path)
                     continue
 
                 if args.no_system_files is True:
-                    LOGGER.info(_("Cleaning %s of system files", bag_dir.path))
+                    LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
                     grabbags.utils.remove_system_files(root=bag_dir.path)
 
                 bag = bagit.make_bag(
@@ -212,7 +216,7 @@ def main():
                     processes=args.processes,
                     checksums=args.checksums)
 
-                LOGGER.info(_("Bagged %s", bag_dir.path))
+                LOGGER.info(_("Bagged %s"), bag_dir.path)
 
 
 if __name__ == "__main__":
