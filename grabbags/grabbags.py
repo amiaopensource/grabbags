@@ -157,6 +157,7 @@ def _configure_logging(opts):
 
 
 def main():
+
     parser = _make_parser()
     args = parser.parse_args()
 
@@ -173,6 +174,16 @@ def main():
 
             if is_bag(bag_dir.path):
                 print("{} is already a bag".format(bag_dir.path))
+
+                if args.no_checksums is True:
+                    bag = bagit.Bag(bag_dir.path)
+
+                    try:
+                        bag.validate(completeness_only=args.no_checksums)
+                        # print("{} is valid".format(bag))
+
+                    except bagit.BagError as e:
+                        print(f"{bag} is invalid: {e}", file=sys.stderr)
                 continue
 
             if args.no_system_files is True:
