@@ -154,7 +154,7 @@ def _make_parser():
 def _configure_logging(opts):
     log_format = "%(asctime)s - %(levelname)s - %(message)s"
     if opts.quiet:
-        level = logging.ERROR
+        level = logging.WARN
     else:
         level = logging.INFO
     if opts.log:
@@ -178,7 +178,7 @@ def main():
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
                 if not is_bag(bag_dir.path):
-                    LOGGER.info(_("%s is not a bag"), bag_dir.path)
+                    LOGGER.warn(_("%s is not a bag. Skipped."), bag_dir.path)
                     continue
 
                 try:
@@ -190,11 +190,11 @@ def main():
                         completeness_only=args.no_checksums,
                     )
                     if args.fast:
-                        LOGGER.error(_("%s valid according to Payload-Oxum"), bag_dir.path)
+                        LOGGER.info(_("%s valid according to Payload-Oxum"), bag_dir.path)
                     elif args.no_checksums:
-                        LOGGER.error(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
+                        LOGGER.info(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
                     else:
-                        LOGGER.error(_("%s is valid"), bag_dir.path)
+                        LOGGER.info(_("%s is valid"), bag_dir.path)
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"), {"bag": bag_dir.path, "error": e}
@@ -203,7 +203,7 @@ def main():
                 print(bag_dir.path)
 
                 if is_bag(bag_dir.path):
-                    LOGGER.info(_("%s is already a bag"), bag_dir.path)
+                    LOGGER.warn(_("%s is already a bag. Skipped."), bag_dir.path)
                     continue
 
                 if args.no_system_files is True:
