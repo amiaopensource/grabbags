@@ -1,5 +1,7 @@
 # Grabbags
 
+[![Build Status](https://travis-ci.org/amiaopensource/grabbags.svg?branch=master)](https://travis-ci.org/amiaopensource/grabbags)
+
 ## Introduction
 
 Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also elminate system files before bagging. 
