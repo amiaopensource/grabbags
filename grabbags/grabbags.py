@@ -174,6 +174,10 @@ def main():
         parser.error(_("--fast is only allowed as an option for --validate!"))
 
     _configure_logging(args)
+
+    successes = []
+    failures = []
+
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
@@ -195,10 +199,12 @@ def main():
                         LOGGER.info(_("%s valid according to Payload-Oxum and file manifest"), bag_dir.path)
                     else:
                         LOGGER.info(_("%s is valid"), bag_dir.path)
+                    successes.append(bag_dir.path)
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"), {"bag": bag_dir.path, "error": e}
                     )
+                    failures.append(bag_dir.path)
             else:
                 print(bag_dir.path)
 
@@ -217,6 +223,18 @@ def main():
                     checksums=args.checksums)
 
                 LOGGER.info(_("Bagged %s"), bag_dir.path)
+                successes.append(bag_dir.path)
+
+    if args.validate:
+        action = "validated"
+    else:
+        action = "created"
+
+    LOGGER.warn(_("%(count)s bags %(action)s successfully"), {"count": len(successes), "action": action})
+    LOGGER.warn(_("%(count)s bags not %(action)s"), {"count": len(failures), "action": action})
+    LOGGER.warn(_("Failed for the following folders: %s"), ", ".join(failures))
+
+
 
 
 if __name__ == "__main__":
