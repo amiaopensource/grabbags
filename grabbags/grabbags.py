@@ -216,14 +216,20 @@ def main():
                     LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
                     grabbags.utils.remove_system_files(root=bag_dir.path)
 
-                bag = bagit.make_bag(
-                    bag_dir.path,
-                    bag_info=args.bag_info,
-                    processes=args.processes,
-                    checksums=args.checksums)
+                try:
+                    bag = bagit.make_bag(
+                        bag_dir.path,
+                        bag_info=args.bag_info,
+                        processes=args.processes,
+                        checksums=args.checksums)
 
-                LOGGER.info(_("Bagged %s"), bag_dir.path)
-                successes.append(bag_dir.path)
+                    LOGGER.info(_("Bagged %s"), bag_dir.path)
+                    successes.append(bag_dir.path)
+                except bagit.BagError as e:
+                    LOGGER.error(
+                        _("%(bag)s could not be bagged: %(error)s"), {"bag": bag_dir.path, "error": e}
+                    )
+                    failures.append(bag_dir.path)
 
     if args.validate:
         action = "validated"
