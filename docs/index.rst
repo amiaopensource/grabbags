@@ -11,6 +11,7 @@ Welcome to grabbags's documentation!
    :caption: Contents:
 
    about
+   getting_started
    api
 
 

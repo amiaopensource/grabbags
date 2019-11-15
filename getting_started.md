@@ -23,6 +23,7 @@
     ``` python3 -m venv venv ```
 
     On Windows:
+    
     ```py -m venv venv```
 
 2) Activate Python virtual environment
@@ -39,3 +40,18 @@
     ```python -m pip install -e .```
 
 4) Start hacking
+
+## Building the documentation
+
+1) Follow the instructions above and install and activate the development 
+virtual environment 
+
+2) Install sphinx and m2r packages
+
+    ```pip install sphinx m2r```
+    
+3) Run sphinx build target from setup.py
+
+    ```python setup.py build_sphinx``` 
+    
+By default, the documentation is generated into build/sphinx/html
