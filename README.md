@@ -37,3 +37,13 @@ Users can optionally use the flags `--validate --no--checksums`. This only valid
 ## Enhanced Logging
 Just as in bagit python, users can use the `--log (path to place log file)` flag to create a log when creating or validating bags. At the end of the output grabbags will display summary data about the numbers of bags created or validated (number of successes, number of failures and path to all failures).
 
+## Credits
+Grabbags was produced as part of AMIA/DLF Hack Day 2019
+
+The initial project team was:
+
+* Henry Borchers
+* Helyx Chase Scearce Horwitz
+* Jonathan Farbowitz
+* Nıck Krabbenhöft
+
