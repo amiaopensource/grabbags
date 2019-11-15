@@ -15,7 +15,7 @@ To run grabbags, use the command:
 ` $ grabbags (optional flags) (target directory path)`
 
 By default, grabbags will do bulk creation of bags. It assumes that a target directory contains many other subdirectories inside of it that will be turned into bags. So set up your directories accordingly. You can also give the command multiple target directories
-` $ grabbags (optional flags) (target directory path 1) (target directory path 2)
+` $ grabbags (optional flags) (target directory path 1) (target directory path 2)`
 
 Since grabbags uses the bagit Python library, all the functionality of bagit (including adding metadata fields and choosing checksum algorithms) should be available for bag creation.
 
