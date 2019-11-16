@@ -191,6 +191,21 @@ def validate_bag(bag_dir, args):
         LOGGER.info(_("%s is valid"), bag_dir.path)
 
 
+def clean_bag():
+    if not is_bag(bag_dir.path):
+        LOGGER.warn(_("%s is not a bag. Not cleaning."), bag_dir.path)
+        continue
+
+    bag = bagit.Bag(bag_dir.path)
+    if bag.compare_manifests_with_fs()[1]:
+        for payload_file in self.compare_manifests_with_fs()[1]:
+            if grabbags.utils.is_system_file(payload_file):
+                LOGGER.info("Removing {}".format(full_path))
+                os.remove(payload_file)
+            else:
+                LOGGER.warn("Not removing {}".format(full_path))
+
+
 def make_bag():
     if is_bag(bag_dir.path):
         LOGGER.warn(_("%s is already a bag. Skipped."), bag_dir.path)
