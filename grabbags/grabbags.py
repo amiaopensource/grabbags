@@ -79,6 +79,15 @@ def _make_parser():
         help=_("Suppress all progress information other than errors"),
     )
     parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=_(
+            "Remove remove any system files not in manifest of a bag."
+            " The following files will be deleted: .DS_Store, Thumbs.db, "
+            " Appledoubles (._*), Icon files"
+        ),
+    )
+    parser.add_argument(
         "--validate",
         action="store_true",
         help=_(
@@ -191,7 +200,7 @@ def validate_bag(bag_dir, args):
         LOGGER.info(_("%s is valid"), bag_dir.path)
 
 
-def clean_bag():
+def clean_bag(bag_dir):
     if not is_bag(bag_dir.path):
         LOGGER.warn(_("%s is not a bag. Not cleaning."), bag_dir.path)
         continue
@@ -250,6 +259,16 @@ def main():
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"),
+                        {"bag": bag_dir.path, "error": e}
+                    )
+                    failures.append(bag_dir.path)
+            elif args.clean:
+                try:
+                    clean_bag(bag_dir)
+                    successes.append(bag_dir.path)
+                except bagit.BagError as e:
+                    LOGGER.error(
+                        _("%(bag)s cannot be cleaned: %(error)s"),
                         {"bag": bag_dir.path, "error": e}
                     )
                     failures.append(bag_dir.path)
