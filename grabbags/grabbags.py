@@ -253,6 +253,7 @@ def main():
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
+                action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
                     successes.append(bag_dir.path)
@@ -263,6 +264,7 @@ def main():
                     )
                     failures.append(bag_dir.path)
             elif args.clean:
+                action = 'cleaned'
                 try:
                     clean_bag(bag_dir)
                     successes.append(bag_dir.path)
@@ -273,6 +275,7 @@ def main():
                     )
                     failures.append(bag_dir.path)
             else:
+                action = 'created'
                 try:
                     make_bag(bag_dir, args)
                     successes.append(bag_dir.path)
@@ -282,11 +285,6 @@ def main():
                         {"bag": bag_dir.path, "error": e}
                     )
                     failures.append(bag_dir.path)
-
-    if args.validate:
-        action = "validated"
-    else:
-        action = "created"
 
     LOGGER.warn(
         _("%(count)s bags %(action)s successfully"),
