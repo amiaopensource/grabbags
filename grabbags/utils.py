@@ -41,7 +41,7 @@ def is_system_file(file_path) -> bool:
     if filename in SYSTEM_FILES:
         return True
 
-    res = APPLE_DOUBLE_REGEX.findall(file_path)
+    res = APPLE_DOUBLE_REGEX.findall(filename)
     if len(res) > 0:
         return True
 
