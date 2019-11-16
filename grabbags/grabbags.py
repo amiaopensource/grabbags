@@ -294,10 +294,11 @@ def main():
         _("%(count)s bags not %(action)s"),
         {"count": len(failures), "action": action}
     )
-    LOGGER.warn(
-        _("Failed for the following folders: %s"),
-        ", ".join(failures)
-    )
+    if failures:
+        LOGGER.warn(
+            _("Failed for the following folders: %s"),
+            ", ".join(failures)
+        )
 
 
 if __name__ == "__main__":
