@@ -6,7 +6,8 @@ LOGGER = logging.getLogger(MODULE_NAME)
 
 SYSTEM_FILES = [
     ".DS_Store",
-    "Thumbs.db"
+    "Thumbs.db",
+    "Icon\r"
 ]
 
 APPLE_DOUBLE_REGEX = re.compile(r"^\._.*$")
@@ -24,6 +25,7 @@ def is_system_file(file_path) -> bool:
             * .DS_Store
             * Thumbs.db
             * `AppleDouble files <https://en.wikipedia.org/wiki/AppleSingle_and_AppleDouble_formats>`_
+            * `Icon resource forks <https://superuser.com/questions/298785/icon-file-on-os-x-desktop/298798#298798>`_
 
     Returns:
         True if the file a system file,
@@ -42,8 +44,6 @@ def is_system_file(file_path) -> bool:
     res = APPLE_DOUBLE_REGEX.findall(file_path)
     if len(res) > 0:
         return True
-
-    # TODO: Validate if Apple Icon file
 
     return False
 
