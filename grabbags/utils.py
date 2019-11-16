@@ -1,5 +1,8 @@
 import os
 import re
+import logging
+
+LOGGER = logging.getLogger(MODULE_NAME)
 
 SYSTEM_FILES = [
     ".DS_Store",
@@ -62,5 +65,5 @@ def remove_system_files(root) -> None:
             full_path = os.path.join(root, file_)
 
             if is_system_file(full_path):
-                print("Removing {}".format(full_path))
+                LOGGER.warn("Removing {}".format(full_path))
                 os.remove(full_path)
