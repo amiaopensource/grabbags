@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also elminate system files before bagging. 
+Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also eliminate system files before bagging. 
 
 ## Installing grabbags
 For installation, see [getting_started.md](getting_started.md)
@@ -19,7 +19,7 @@ By default, grabbags will do bulk creation of bags. It assumes that a target dir
 
 Since grabbags uses the bagit Python library, all the functionality of bagit (including adding metadata fields and choosing checksum algorithms) should be available for bag creation.
 
-### Elinating System Files Before Bag Creation
+### Eliminating System Files Before Bag Creation
 Using the `--no-system-files` flag when creating bags will find and remove any system files before bagging. The current system files that the script can find are:
 * .DS_Store
 * Thumbs.db
