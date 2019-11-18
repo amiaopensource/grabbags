@@ -2,6 +2,8 @@ import os
 import re
 import logging
 
+MODULE_NAME = "grabbags" if __name__ == "__main__" else __name__
+
 LOGGER = logging.getLogger(MODULE_NAME)
 
 SYSTEM_FILES = [
