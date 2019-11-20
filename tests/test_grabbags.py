@@ -23,7 +23,7 @@ def test_delete_annoying_files():
         "._somethingsomething",
         "._f",
         "._~",
-        "._/something",
+        "._something",
     ])
 def test_apple_doubles_valid(entry):
     assert grabbags.utils.is_system_file(entry) is True
