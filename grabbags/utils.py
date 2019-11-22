@@ -1,9 +1,15 @@
 import os
 import re
+import logging
+
+MODULE_NAME = "grabbags" if __name__ == "__main__" else __name__
+
+LOGGER = logging.getLogger(MODULE_NAME)
 
 SYSTEM_FILES = [
     ".DS_Store",
-    "Thumbs.db"
+    "Thumbs.db",
+    "Icon\r"
 ]
 
 APPLE_DOUBLE_REGEX = re.compile(r"^\._.*$")
@@ -21,6 +27,7 @@ def is_system_file(file_path) -> bool:
             * .DS_Store
             * Thumbs.db
             * `AppleDouble files <https://en.wikipedia.org/wiki/AppleSingle_and_AppleDouble_formats>`_
+            * `Icon resource forks <https://superuser.com/questions/298785/icon-file-on-os-x-desktop/298798#298798>`_
 
     Returns:
         True if the file a system file,
@@ -36,11 +43,9 @@ def is_system_file(file_path) -> bool:
     if filename in SYSTEM_FILES:
         return True
 
-    res = APPLE_DOUBLE_REGEX.findall(file_path)
+    res = APPLE_DOUBLE_REGEX.findall(filename)
     if len(res) > 0:
         return True
-
-    # TODO: Validate if Apple Icon file
 
     return False
 
@@ -62,5 +67,5 @@ def remove_system_files(root) -> None:
             full_path = os.path.join(root, file_)
 
             if is_system_file(full_path):
-                print("Removing {}".format(full_path))
+                LOGGER.warn("Removing {}".format(full_path))
                 os.remove(full_path)
