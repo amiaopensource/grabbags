@@ -180,7 +180,7 @@ def _configure_logging(opts):
 def validate_bag(bag_dir, args):
     if not is_bag(bag_dir.path):
         LOGGER.warn(_("%s is not a bag. Skipped."), bag_dir.path)
-        continue
+        # continue
 
     bag = bagit.Bag(bag_dir.path)
     # validate throws a BagError or BagValidationError
@@ -203,7 +203,7 @@ def validate_bag(bag_dir, args):
 def clean_bag(bag_dir):
     if not is_bag(bag_dir.path):
         LOGGER.warn(_("%s is not a bag. Not cleaning."), bag_dir.path)
-        continue
+        # continue
 
     bag = bagit.Bag(bag_dir.path)
     if bag.compare_manifests_with_fs()[1]:
@@ -215,10 +215,10 @@ def clean_bag(bag_dir):
                 LOGGER.warn("Not removing {}".format(full_path))
 
 
-def make_bag():
+def make_bag(bag_dir, args):
     if is_bag(bag_dir.path):
         LOGGER.warn(_("%s is already a bag. Skipped."), bag_dir.path)
-        continue
+        # continue
 
     if args.no_system_files is True:
         LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
