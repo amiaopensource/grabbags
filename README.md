@@ -32,7 +32,7 @@ Please send a pull request or issue if you have additional information about new
 Validation of bags has two possible options:
 
 The default behavior of `$ grabbags --validate` is to validate the bag by comparing the checksums of all files with the checksums contained in the manifest.
-Users can optionally use the flags `--validate --no--checksums`. This only validates the Oxsum of the bag, the number of files, and the proper files according to the bagit specification. Using the --no-checksums flag is equivalent to running `--validate --completeness-only`
+Users can optionally use the flags `--validate --no-checksums`. This only validates the Oxsum of the bag, the number of files, and the proper files according to the bagit specification. Using the --no-checksums flag is equivalent to running `--validate --completeness-only`
 
 ## Enhanced Logging
 Just as in bagit python, users can use the `--log (path to place log file)` flag to create a log when creating or validating bags. At the end of the output grabbags will display summary data about the numbers of bags created or validated (number of successes, number of failures and path to all failures).
