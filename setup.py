@@ -5,7 +5,7 @@ setup(
     version='0.0.1',
     packages=['grabbags'],
     url='https://github.com/amiaopensource/grabbags',
-    license='',
+    license='GPLv3',
     author='AMIA',
     author_email='',
     description='',
