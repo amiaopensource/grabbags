@@ -22,8 +22,8 @@ jobs:
     - name: Pylint
       run: |
         pip install pylint
-        pylint grabbags -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
-#  > pylint.log
+        mkdir -p reports
+        pylint grabbags -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --exit-zero > reports/pylint.log
     - name: SonarCloud Scan
       uses: sonarsource/sonarcloud-github-action@master
       env:
