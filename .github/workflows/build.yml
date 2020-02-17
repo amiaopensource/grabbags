@@ -19,6 +19,11 @@ jobs:
       run: |
         pip install pytest
         python -m pytest  --junitxml xunit-reports/xunit-result-python.xml
+    - name: Pylint
+      run: |
+        pip install pylint
+        mkdir -p reports
+        pylint grabbags -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint.log
     - name: SonarCloud Scan
       uses: sonarsource/sonarcloud-github-action@master
       env:
