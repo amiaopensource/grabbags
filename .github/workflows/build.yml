@@ -20,9 +20,6 @@ jobs:
     - name: Pytest
       run: |
         pip install pytest pytest-cov
-        python --version
-        pwd
-        ls /home/runner/work/grabbags/grabbags/grabbags
         pytest --junitxml xunit-reports/xunit-result-python.xml --cov=grabbags/ --cov-report=xml:coverage-reports/pythoncoverage-pytest.xml
         cat coverage-reports/pythoncoverage-pytest.xml
     - name: Pylint
@@ -32,6 +29,8 @@ jobs:
         pylint grabbags -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --exit-zero > reports/pylint.log
     - name: SonarCloud Scan
       uses: sonarsource/sonarcloud-github-action@master
+      with:
+        projectBaseDir: grabbags
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
