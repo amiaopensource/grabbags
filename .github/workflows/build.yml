@@ -14,14 +14,15 @@ jobs:
           python-version: 3.7
     - name: Install dependencies
       run: |
-        ls
         python -m pip install --upgrade pip
-        python -m pip install bagit
+        pip install pytest pytest-cov pylint
     - name: Pytest
       run: |
         pip install pytest pytest-cov
-        python --version
         python -m pytest --junitxml xunit-reports/xunit-result-python.xml --cov=grabbags --cov-report=xml:coverage-reports/pythoncoverage-pytest.xml
+        sed -i 's/\/home\/runner\/work\/grabbags\/grabbags\//\/github\/workspace\//g' coverage-reports/pythoncoverage-pytest.xml
+        sed -i 's/\/home\/runner\/work\/grabbags\/grabbags\//\/github\/workspace\//g' xunit-reports/xunit-result-python.xml
+        cat coverage-reports/pythoncoverage-pytest.xml
     - name: Pylint
       run: |
         pip install pylint
