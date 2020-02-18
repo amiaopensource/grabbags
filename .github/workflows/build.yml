@@ -21,6 +21,7 @@ jobs:
       run: |
         pip install pytest pytest-cov
         python --version
+        pwd
         pytest --junitxml xunit-reports/xunit-result-python.xml --cov=grabbags/ --cov-report=xml:coverage-reports/pythoncoverage-pytest.xml
         cat coverage-reports/pythoncoverage-pytest.xml
     - name: Pylint
