@@ -14,6 +14,7 @@ jobs:
           python-version: 3.7
     - name: Install dependencies
       run: |
+        ls -laR
         python -m pip install --upgrade pip
         pip install -e .
     - name: Pytest
