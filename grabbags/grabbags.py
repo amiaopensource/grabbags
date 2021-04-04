@@ -8,6 +8,9 @@ import sys
 from grabbags.bags import is_bag
 import grabbags.utils
 
+successes = []
+failures = []
+not_a_bag = []
 
 def find_locale_dir():
     for prefix in (os.path.dirname(__file__), sys.prefix):
@@ -180,7 +183,8 @@ def _configure_logging(opts):
 def validate_bag(bag_dir, args):
     if not is_bag(bag_dir.path):
         LOGGER.warn(_("%s is not a bag. Skipped."), bag_dir.path)
-        return
+        not_a_bag.append(bag_dir.path)
+        return 
 
     bag = bagit.Bag(bag_dir.path)
     # validate throws a BagError or BagValidationError
@@ -189,6 +193,7 @@ def validate_bag(bag_dir, args):
         fast=args.fast,
         completeness_only=args.no_checksums,
     )
+    successes.append(bag_dir.path)
     if args.fast:
         LOGGER.info(_("%s valid according to Payload-Oxum"), bag_dir.path)
     elif args.no_checksums:
@@ -197,27 +202,27 @@ def validate_bag(bag_dir, args):
             bag_dir.path
         )
     else:
-        LOGGER.info(_("%s is valid"), bag_dir.path)
+        LOGGER.info(_("%s is valid"), bag_dir.path) 
 
 
 def clean_bag(bag_dir):
     if not is_bag(bag_dir.path):
-        LOGGER.warn(_("%s is not a bag. Not cleaning."), bag_dir.path)
+        LOGGER.warning(_("%s is not a bag. Not cleaning."), bag_dir.path)
         return
 
     bag = bagit.Bag(bag_dir.path)
     if bag.compare_manifests_with_fs()[1]:
-        for payload_file in self.compare_manifests_with_fs()[1]:
+        for payload_file in bag.compare_manifests_with_fs()[1]:
             if grabbags.utils.is_system_file(payload_file):
-                LOGGER.info("Removing {}".format(full_path))
+                LOGGER.info("Removing {}".format(bag_dir.path))
                 os.remove(payload_file)
             else:
-                LOGGER.warn("Not removing {}".format(full_path))
+                LOGGER.warning("Not removing {}".format(bag_dir.path))
 
 
 def make_bag(bag_dir, args):
     if is_bag(bag_dir.path):
-        LOGGER.warn(_("%s is already a bag. Skipped."), bag_dir.path)
+        LOGGER.warning(_("%s is already a bag. Skipped."), bag_dir.path)
         return
 
     if args.no_system_files is True:
@@ -230,8 +235,8 @@ def make_bag(bag_dir, args):
             processes=args.processes,
             checksums=args.checksums
         )
-
-    LOGGER.info(_("Bagged %s"), bag_dir.path)
+    successes.append(bag_dir.path)
+    LOGGER.info(_("Bagged %s"), bag.path)
 
 
 def main():
@@ -247,16 +252,12 @@ def main():
 
     _configure_logging(args)
 
-    successes = []
-    failures = []
-
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
                 action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
-                    successes.append(bag_dir.path)
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"),
@@ -278,7 +279,7 @@ def main():
                 action = 'created'
                 try:
                     make_bag(bag_dir, args)
-                    successes.append(bag_dir.path)
+                    #successes.append(bag_dir.path)
                 except bagit.BagError as e:
                     LOGGER.error(
                         _("%(bag)s could not be bagged: %(error)s"),
@@ -286,20 +287,28 @@ def main():
                     )
                     failures.append(bag_dir.path)
 
-    LOGGER.warn(
+    LOGGER.info(
         _("%(count)s bags %(action)s successfully"),
         {"count": len(successes), "action": action}
     )
-    LOGGER.warn(
-        _("%(count)s bags not %(action)s"),
-        {"count": len(failures), "action": action}
-    )
-    if failures:
-        LOGGER.warn(
+    if failures and len(failures) > 0:
+        LOGGER.warning(
+            _("%(count)s bags not %(action)s"),
+            {"count": len(failures), "action": action}
+        )
+        LOGGER.warning(
             _("Failed for the following folders: %s"),
             ", ".join(failures)
         )
-
+    if not_a_bag and len(not_a_bag) > 0:
+        LOGGER.warning(
+            _("%(count)s folders are not bags"),
+            {"count": len(not_a_bag)}
+        )
+        LOGGER.warning(
+            _("The following folders are not bags: %s"),
+            ", ".join(not_a_bag)
+        )
 
 if __name__ == "__main__":
     main()
