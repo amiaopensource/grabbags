@@ -1,7 +1,9 @@
 import logging
 import os
+import traceback
 import typing
 from grabbags import grabbags
+import abc
 from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
 import sys
 try:
@@ -43,6 +45,12 @@ class OptionsPanel(QtWidgets.QWidget):
         layout.addWidget(self.ui)
         self.setLayout(layout)
 
+    def get_settings(self) -> typing.Dict[str, bool]:
+        return {
+            user_option.objectName(): user_option.isChecked()
+            for user_option in self.ui.findChildren(QtWidgets.QCheckBox)
+        }
+
 
 class Console(QtWidgets.QWidget):
     directories_entered = QtCore.Signal(list)
@@ -69,15 +77,15 @@ class Console(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.ui)
         self.setLayout(layout)
-        self._text_buffer: typing.List[str] = []
         self._document = QtGui.QTextDocument(self)
         self.ui.consoleText.setDocument(self._document)
 
-    def check_valid_dragged_data(self, sources: typing.List[str]) -> bool:
-        for s in sources:
-            if not os.path.exists(s):
+    @staticmethod
+    def check_valid_dragged_data(sources: typing.List[str]) -> bool:
+        for source in sources:
+            if not os.path.exists(source):
                 return False
-            if not os.path.isdir(s):
+            if not os.path.isdir(source):
                 return False
         return True
 
@@ -99,31 +107,102 @@ class Console(QtWidgets.QWidget):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         self.write("Bagging...")
+        event.accept()
         self.directories_entered.emit([
                 s.path() for s in event.mimeData().urls()
         ])
-        event.accept()
-
-    def dragLeaveEvent(self, event: QtGui.QDragLeaveEvent) -> None:
-        self.write_log_buffer_to_screen()
 
     def clear(self) -> None:
-        self._text_buffer.clear()
-        self.write_log_buffer_to_screen()
+        self._document.clear()
+
+    def text(self):
+        return self._document.toPlainText().strip()
 
     def write(self, text: str) -> None:
-        self._text_buffer.append(f"<p>{text}</p>")
-        self.write_log_buffer_to_screen()
+        cursor = QtGui.QTextCursor(self._document)
+        cursor.movePosition(cursor.End)
+        cursor.insertBlock()
+        cursor.insertHtml(f"<p>{text}</p>")
+        self.ui.consoleText.setTextCursor(cursor)
+        QtCore.QCoreApplication.processEvents()
 
     def pop_alert(self, text: str):
+        """Provide information to user that is not log information.
+
+        For example, provide a user with the message that a configuration is
+            not valid.
+
+        Args:
+            text:
+
+        """
         self.ui.consoleText.setText(f"<h3>{text}</h3>")
-
-    def write_log_buffer_to_screen(self) -> None:
-        self._document.setHtml("\n".join(self._text_buffer))
+        QtCore.QCoreApplication.processEvents()
 
 
-class Demo(QtWidgets.QMainWindow):
+class AbsState(abc.ABC):
 
+    def __init__(self, context: "MainWindow") -> None:
+        super().__init__()
+        self.context = context
+
+    @abc.abstractmethod
+    def run(self, paths: typing.List[str]) -> None:
+        """Run the bags process."""
+
+
+class WorkingState(AbsState):
+
+    def run(self, paths: typing.List[str]) -> None:
+        self.context.console.setAcceptDrops(False)
+        self.context.worker_thread = QtCore.QThread()
+        worker = Worker()
+        QtCore.QCoreApplication.processEvents()
+        worker.moveToThread(self.context.worker_thread)
+
+        self.context.worker_thread.started.connect(
+            lambda paths_=paths: self._run(worker, paths_)
+        )
+
+        worker.finished.connect(self.context.worker_thread.quit)
+        worker.finished.connect(self.context.worker_thread.deleteLater)
+
+        self.context.worker_thread.finished.connect(
+            self.context.worker_thread.deleteLater
+        )
+
+        self.context.worker_thread.start()
+        self.context.console.write("Done")
+        self.context.current_state = IdleState(context=self.context)
+
+    def _run(self, worker: "Worker", paths: typing.List[str]):
+        try:
+            worker.run(paths, self.context.options.get_settings())
+        except UnboundLocalError as error:
+            traceback.print_exc(file=sys.stderr)
+            warning_message_box = QtWidgets.QMessageBox(
+                icon=QtWidgets.QMessageBox.Icon.Critical,
+                parent=self.context,
+            )
+            warning_message_box.setText(str(error))
+            warning_message_box.exec_()
+            if self.context.worker_thread is not None:
+                self.context.worker_thread.quit()
+            QtGui.QGuiApplication.exit(1)
+
+
+class IdleState(AbsState):
+
+    def __init__(self, context: "MainWindow") -> None:
+        super().__init__(context)
+        self.context.console.setAcceptDrops(True)
+
+    def run(self, paths: typing.List[str]) -> None:
+        self.context.current_state = WorkingState(self.context)
+        self.context.current_state.run(paths)
+
+
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
@@ -149,13 +228,61 @@ class Demo(QtWidgets.QMainWindow):
         self.clearLogButton.clicked.connect(self.console.clear)
         self._layout.addWidget(self.clearLogButton)
 
-        self.console.directories_entered.connect(self.run)
         self.setCentralWidget(main_widget)
+        # ==================
+        self.worker_thread: typing.Optional[QtCore.QThread] = None
+        # Set state to idle
+        self.current_state: AbsState = IdleState(self)
+        self.console.directories_entered.connect(
+            lambda paths: self.current_state.run(paths)
+        )
 
     def run(self, paths: typing.List[str]) -> None:
-        # run_grabbags.run(paths)
+        self.current_state.run(paths)
 
-        self.console.write("Done")
+
+class Worker(QtCore.QObject):
+    finished = QtCore.Signal()
+    progress = QtCore.Signal(int)
+
+    # OPTIONS_CLI are from "options.ui" in the optionGroupBox widgets
+    #
+    OPTIONS_CLI: typing.Dict[str, str] = {
+        'optionValidate': '--validate',
+        'optionNoChecksum': '--no-checksums',
+        'optionFast': '--fast',
+        'optionNoSystemFiles': '--no-system-files'
+    }
+
+    def run(self, paths=None, options=None):
+        options = options or {}
+
+        for i, path in enumerate(paths):
+            args = self.get_matching_cli_args(path, options)
+
+            QtCore.QCoreApplication.processEvents()
+            print(args)
+            grabbags.main(args)
+            self.progress.emit(i + 1)
+        self.finished.emit()
+
+    def get_matching_cli_args(
+            self, path: str, options: typing.Dict[str, bool]
+    ):
+        """Match the gui options to the CLI version of args.
+
+        Args:
+            path:
+            options:
+
+        Returns:
+
+        """
+        args = [path]
+        for key, value in options.items():
+            if key in self.OPTIONS_CLI and value is True:
+                args.append(self.OPTIONS_CLI[key])
+        return args
 
 
 class ConsoleLogHandler(logging.Handler):
@@ -176,7 +303,7 @@ def main(argv: typing.Optional[typing.List[str]] = None) -> None:
 
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     app = QtWidgets.QApplication(argv)
-    main_window = Demo()
+    main_window = MainWindow()
     console_log_handler = ConsoleLogHandler(main_window.console)
     grabbags.LOGGER.addHandler(console_log_handler)
     main_window.setWindowTitle("Grabbags GUI Demo")
