@@ -123,5 +123,6 @@ def test_exception_creates_a_dialog_box(qtbot, monkeypatch):
     mock_exec = Mock()
     monkeypatch.setattr(QtWidgets.QErrorMessage, "exec_", mock_exec)
     app = gui.MainWindow()
+    qtbot.add_widget(app)
     app.run(['./spam'])
     assert mock_exec.called is True and showMessage.called is True
