@@ -15,9 +15,19 @@ setup(
           'grabbags = grabbags.grabbags:main'
       ]
     },
+    package_data={
+        "grabbags": ["*.ui"],
+    },
     install_requires=[
-        "bagit"
+        "bagit",
+
     ],
+    extras_require={
+        'GUI': [
+            "pyside2",
+            "importlib_resources;python_version<'3.9'"
+        ]
+    },
     tests_require=[
         'pytest',
     ],

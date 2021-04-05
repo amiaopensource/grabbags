@@ -3,6 +3,7 @@ import os
 import pytest
 import shutil
 import grabbags.bags
+import pathlib
 
 
 @pytest.fixture()
@@ -48,7 +49,7 @@ def sample_bags(tmpdir_factory):
 
         for file_path in bag['files']:
             sample_file_path = os.path.join(data_dir, bag["root"], *file_path)
-            os.mknod(sample_file_path)
+            pathlib.Path(sample_file_path).touch()
 
     yield data_dir, bags
     shutil.rmtree(data_dir)

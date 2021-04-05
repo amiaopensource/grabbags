@@ -238,10 +238,24 @@ def make_bag(bag_dir, args):
     LOGGER.info(_("Bagged %s"), bag.path)
 
 
-def main():
-
+def main(argv=None):
+    argv = argv or sys.argv
+    if "--gui" in argv:
+        try:
+            # The import statement to grabbags.gui is here instead of top of
+            # the file to defer loading the module until it's requested. This
+            # way, if grabbags is installed on a machine that doesn't have a
+            # gui, such as a server of ssh, it will not throw an error message
+            # unless explicitly tried by the user.
+            from grabbags import gui
+            return gui.main()
+        except ImportError:
+            print("Required PySide2 is not installed. Unable to load gui",
+                  file=sys.stderr
+                  )
+            sys.exit(-1)
     parser = _make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.processes < 0:
         parser.error(_("The number of processes must be 0 or greater"))
