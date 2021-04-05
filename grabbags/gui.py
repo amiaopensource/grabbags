@@ -1,3 +1,4 @@
+"""Contains the code for running grabbags with a Qt based user interface."""
 import abc
 import logging
 import os
@@ -9,6 +10,7 @@ from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
 
 from grabbags import grabbags
 
+__all__ = ['MainWindow', 'main']
 
 # ignored because an issue with mypy producing false positives
 # see here https://github.com/python/mypy/issues/1153
@@ -62,7 +64,7 @@ class Console(QtWidgets.QWidget):
             parent: typing.Optional[QtWidgets.QWidget] = None
     ) -> None:
 
-        super(Console, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
         with as_file(
                 files('grabbags').joinpath('console.ui')
@@ -182,14 +184,14 @@ class WorkingState(AbsState):
             worker.run(paths, self.context.options.get_settings())
         except Exception as error:
             traceback.print_exc(file=sys.stderr)
-            warning_message_box = QtWidgets.QErrorMessage(parent=self.context)
-            warning_message_box.setWindowModality(QtCore.Qt.WindowModal)
+            error_dialog_box = QtWidgets.QErrorMessage(parent=self.context)
+            error_dialog_box.setWindowModality(QtCore.Qt.WindowModal)
 
-            warning_message_box.setWindowTitle(
+            error_dialog_box.setWindowTitle(
                 f"{type(error).__name__} Exception Thrown"
             )
-            warning_message_box.showMessage(str(error))
-            warning_message_box.exec_()
+            error_dialog_box.showMessage(str(error))
+            error_dialog_box.exec_()
             if self.context.worker_thread is not None:
                 self.context.worker_thread.quit()
             QtGui.QGuiApplication.exit(1)
@@ -207,7 +209,10 @@ class IdleState(AbsState):
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    """Main GUI window for the application."""
+
     def __init__(self) -> None:
+        """Open the tool's main window."""
         super().__init__()
 
         main_widget = QtWidgets.QWidget(self)
@@ -242,6 +247,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
     def run(self, paths: typing.List[str]) -> None:
+        """Run baggit on the paths given."""
         self.current_state.run(paths)
 
 
@@ -250,7 +256,6 @@ class Worker(QtCore.QObject):
     progress = QtCore.Signal(int)
 
     # OPTIONS_CLI are from "options.ui" in the optionGroupBox widgets
-    #
     OPTIONS_CLI: typing.Dict[str, str] = {
         'optionValidate': '--validate',
         'optionNoChecksum': '--no-checksums',
@@ -280,6 +285,7 @@ class Worker(QtCore.QObject):
             options:
 
         Returns:
+            Return the CLI version of the args.
 
         """
         args = [path]
@@ -304,6 +310,7 @@ class ConsoleLogHandler(logging.Handler):
 
 
 def main(argv: typing.Optional[typing.List[str]] = None) -> None:
+    """Start the main entry point for the gui."""
     argv = argv or sys.argv
 
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
