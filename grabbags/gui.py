@@ -1,23 +1,25 @@
+import abc
 import logging
 import os
 import traceback
 import typing
-from grabbags import grabbags
-import abc
-from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
 import sys
+
+from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
+
+from grabbags import grabbags
+
+
+# ignored because an issue with mypy producing false positives
+# see here https://github.com/python/mypy/issues/1153
 try:
-    from importlib.resources import as_file
+    from importlib.resources import as_file  # type: ignore
 except ImportError:
-    # ignored because an issue with mypy producing false positives
-    # see here https://github.com/python/mypy/issues/1153
     from importlib_resources import as_file  # type: ignore
 
 try:
-    from importlib.resources import files
+    from importlib.resources import files  # type: ignore
 except ImportError:
-    # ignored because an issue with mypy producing false positives
-    # see here https://github.com/python/mypy/issues/1153
     from importlib_resources import files  # type: ignore
 
 
@@ -178,13 +180,15 @@ class WorkingState(AbsState):
     def _run(self, worker: "Worker", paths: typing.List[str]):
         try:
             worker.run(paths, self.context.options.get_settings())
-        except UnboundLocalError as error:
+        except Exception as error:
             traceback.print_exc(file=sys.stderr)
-            warning_message_box = QtWidgets.QMessageBox(
-                icon=QtWidgets.QMessageBox.Icon.Critical,
-                parent=self.context,
+            warning_message_box = QtWidgets.QErrorMessage(parent=self.context)
+            warning_message_box.setWindowModality(QtCore.Qt.WindowModal)
+
+            warning_message_box.setWindowTitle(
+                f"{type(error).__name__} Exception Thrown"
             )
-            warning_message_box.setText(str(error))
+            warning_message_box.showMessage(str(error))
             warning_message_box.exec_()
             if self.context.worker_thread is not None:
                 self.context.worker_thread.quit()
@@ -295,7 +299,8 @@ class ConsoleLogHandler(logging.Handler):
         self.widget = widget
 
     def emit(self, record) -> None:
-        self.widget.write(self.formatter.format(record))
+        if self.formatter is not None:
+            self.widget.write(self.formatter.format(record))
 
 
 def main(argv: typing.Optional[typing.List[str]] = None) -> None:
