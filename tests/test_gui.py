@@ -1,6 +1,6 @@
 from unittest.mock import Mock, MagicMock
 import pytest
-from grabbags import gui
+from grabbags import gui, grabbags
 
 
 class TestArgMatching:
@@ -112,3 +112,16 @@ class TestConsole:
             console.dropEvent(drop_event)
         assert drop_event.accept.called is True
 
+
+def test_exception_creates_a_dialog_box(qtbot, monkeypatch):
+    def mock_main(*args, **kwargs):
+        raise UnboundLocalError("some local error")
+    monkeypatch.setattr(grabbags, "main", mock_main)
+    from PySide2 import QtWidgets
+    showMessage = Mock()
+    monkeypatch.setattr(QtWidgets.QErrorMessage, "showMessage", showMessage)
+    mock_exec = Mock()
+    monkeypatch.setattr(QtWidgets.QErrorMessage, "exec_", mock_exec)
+    app = gui.MainWindow()
+    app.run(['./spam'])
+    assert mock_exec.called is True and showMessage.called is True
