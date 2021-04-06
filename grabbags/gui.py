@@ -118,6 +118,8 @@ class Console(QtWidgets.QWidget):
 
     def clear(self) -> None:
         self._document.clear()
+        # Force the gui to redraw
+        QtCore.QCoreApplication.processEvents()
 
     def text(self) -> str:
         return self._document.toPlainText().strip()
