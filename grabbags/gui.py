@@ -275,7 +275,6 @@ class Worker(QtCore.QObject):
             args = self.get_matching_cli_args(path, options)
 
             QtCore.QCoreApplication.processEvents()
-            print(args)
             grabbags.main(args)
             self.progress.emit(i + 1)
         self.finished.emit()
