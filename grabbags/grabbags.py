@@ -250,8 +250,8 @@ def main(argv=None):
             from grabbags import gui  # pylint: disable=import-outside-toplevel
 
             return gui.main()
-        except ImportError:
-            print("Required PySide2 is not installed. Unable to load gui",
+        except ImportError as error:
+            print(f"Unable to load gui. Reason: {error}",
                   file=sys.stderr
                   )
             sys.exit(-1)
