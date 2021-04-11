@@ -122,7 +122,7 @@ class VersionFromGitCommit(VersionStrategy):
         except subprocess.CalledProcessError as error:
             raise InvalidStrategy(
                 f"Unable to determine git hash, reason: {error}"
-            )
+            ) from error
         return f"git: {git_hash.decode('ascii')}"
 
 
