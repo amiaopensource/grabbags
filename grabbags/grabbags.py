@@ -312,7 +312,7 @@ def run(args: argparse.Namespace):
 
 def main(
         argv: typing.List[str] = None,
-        app: typing.Callable[[argparse.Namespace], None] = None
+        runner: typing.Callable[[argparse.Namespace], None] = None
 ) -> None:
 
     argv = argv or sys.argv
@@ -326,8 +326,8 @@ def main(
 
     _configure_logging(args)
 
-    app = app or run
-    app(args)
+    runner = runner or run
+    runner(args)
 
 
 if __name__ == "__main__":

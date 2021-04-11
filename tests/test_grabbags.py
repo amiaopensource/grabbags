@@ -1,3 +1,4 @@
+import argparse
 import os
 from unittest.mock import Mock
 
@@ -56,9 +57,29 @@ class TestCliArgs:
         from grabbags import grabbags
 
         with pytest.raises(SystemExit) as e:
-            grabbags.main(cli_args, app=Mock())
+            grabbags.main(cli_args, runner=Mock())
 
         assert \
             e.value.args[0] == 0, \
             "if system exit is called with anything other than zero, the " \
             "grabbags did not close successfully"
+
+    def test_invalid_processes(self):
+        from grabbags import grabbags
+        with pytest.raises(SystemExit) as e:
+            grabbags.main(['somedir', '--processes=-1'])
+        assert e.value.args[0] != 0
+
+    def test_invalid_fast_without_valid(self):
+        from grabbags import grabbags
+        with pytest.raises(SystemExit) as e:
+            grabbags.main(['somedir', '--fast'])
+        assert e.value.args[0] != 0
+
+    def test_main_calls_callback(self):
+        from grabbags import grabbags
+        run = Mock()
+        grabbags.main(['somedir'], runner=run)
+        assert run.called is True
+
+
