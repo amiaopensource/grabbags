@@ -15,4 +15,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - run: pip install tox; version=${{ matrix.python-version }} ; tox -e py${version//./}
+      - run: pip install tox; tox -e py
