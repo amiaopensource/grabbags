@@ -14,4 +14,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - run: pip install pytest; python setup.py install ; pytest
+      - run: pip install pytest; pip install install . ; pytest
