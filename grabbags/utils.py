@@ -84,6 +84,8 @@ class InvalidStrategy(Exception):
 
 
 class VersionStrategy(abc.ABC):
+    """Base class for determining version information."""
+
     @abc.abstractmethod
     def get_version(self) -> str:
         """Get version information.
