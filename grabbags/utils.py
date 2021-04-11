@@ -1,6 +1,14 @@
 import os
 import re
 import logging
+import abc
+import shutil
+import typing
+import subprocess
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata  # type: ignore
 
 MODULE_NAME = "grabbags" if __name__ == "__main__" else __name__
 
@@ -69,3 +77,83 @@ def remove_system_files(root) -> None:
             if is_system_file(full_path):
                 LOGGER.warn("Removing {}".format(full_path))
                 os.remove(full_path)
+
+
+class InvalidStrategy(Exception):
+    """Invalid strategy for the current situation."""
+
+
+class VersionStrategy(abc.ABC):
+    @abc.abstractmethod
+    def get_version(self) -> str:
+        """Get version information.
+
+        If unable to do so, an InvalidStrategy exception is raised.
+
+        Returns:
+            Version info as a string.
+        """
+
+
+class VersionFromMetadata(VersionStrategy):
+    """Gets version info from the package metadata"""
+    def get_version(self) -> str:
+        try:
+            return metadata.version(__package__)
+        except metadata.PackageNotFoundError as error:
+            raise InvalidStrategy from error
+
+
+class VersionFromGitCommit(VersionStrategy):
+    """Gets version info from git commit."""
+
+    def get_version(self) -> str:
+        git_exec = shutil.which('git')
+        if git_exec is None:
+            raise InvalidStrategy("Git not available")
+        try:
+            git_commit_hash_command = [
+                git_exec,
+                'rev-parse', '--short', 'HEAD'
+            ]
+            git_hash = subprocess.check_output(git_commit_hash_command)
+        except subprocess.CalledProcessError as error:
+            raise InvalidStrategy(
+                f"Unable to determine git hash, reason: {error}"
+            )
+        return f"git: {git_hash.decode('ascii')}"
+
+
+def current_version(strategies: typing.List[VersionStrategy] = None) -> str:
+    """Get the current version number of Grabbags.
+
+    This runs through the various strategies to determine grabbags's version.
+    The first strategy to produce a value is used.
+
+    By default the strategies order is as follows:
+
+        1) Check if there is package metadata (usually .egg-info)
+            file which is generated when grabbags is installed.
+
+        2) Check if the current version is a git repo and if so, get the short
+            commit hash value for the HEAD.
+
+    When all else fails. The return value is 'Unknown'
+
+    Args:
+        strategies: List of strategies to determine the version.
+
+    Returns:
+        Returns the version number as a string or "Unknown"
+
+    """
+    strategies = strategies if strategies is not None else [
+        VersionFromMetadata(),
+        VersionFromGitCommit()
+    ]
+    for strategy in strategies:
+        try:
+            return strategy.get_version()
+        except InvalidStrategy:
+            continue
+    return "Unknown"
