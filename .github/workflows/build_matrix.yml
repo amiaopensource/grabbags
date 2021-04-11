@@ -1,5 +1,5 @@
 on: [push]
-name: Main Workflow
+name: Build
 jobs:
   build:
     runs-on: ${{ matrix.os }}
