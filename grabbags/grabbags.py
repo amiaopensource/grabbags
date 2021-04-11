@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import typing
 
 from grabbags.bags import is_bag
 import grabbags.utils
@@ -247,10 +248,9 @@ def make_bag(bag_dir, args):
         )
     successes.append(bag_dir.path)
     LOGGER.info(_("Bagged %s"), bag.path)
+
+
 def run(args: argparse.Namespace):
-
-    _configure_logging(args)
-
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
@@ -310,18 +310,24 @@ def run(args: argparse.Namespace):
         )
 
 
-def main(argv=None, app=None):
+def main(
+        argv: typing.List[str] = None,
+        app: typing.Callable[[argparse.Namespace], None] = None
+) -> None:
+
     argv = argv or sys.argv
-    parser = _make_parser()
-    args = parser.parse_args(args=argv)
+    parser: argparse.ArgumentParser = _make_parser()
+    args: argparse.Namespace = parser.parse_args(args=argv)
     if args.processes < 0:
         parser.error(_("The number of processes must be 0 or greater"))
 
     if args.fast and not args.validate:
         parser.error(_("--fast is only allowed as an option for --validate!"))
+
+    _configure_logging(args)
+
     app = app or run
     app(args)
-
 
 
 if __name__ == "__main__":
