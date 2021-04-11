@@ -1,5 +1,5 @@
 on: [push]
-name: Build
+name: Multi-platform Compatibility Test
 jobs:
   build:
     runs-on: ${{ matrix.os }}
