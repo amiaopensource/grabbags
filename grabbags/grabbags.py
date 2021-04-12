@@ -247,10 +247,11 @@ def main(argv=None):
             # way, if grabbags is installed on a machine that doesn't have a
             # gui, such as a server of ssh, it will not throw an error message
             # unless explicitly tried by the user.
-            from grabbags import gui
+            from grabbags import gui  # pylint: disable=import-outside-toplevel
+
             return gui.main()
-        except ImportError:
-            print("Required PySide2 is not installed. Unable to load gui",
+        except ImportError as error:
+            print(f"Unable to load gui. Reason: {error}",
                   file=sys.stderr
                   )
             sys.exit(-1)

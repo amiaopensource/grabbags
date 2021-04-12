@@ -118,8 +118,10 @@ class Console(QtWidgets.QWidget):
 
     def clear(self) -> None:
         self._document.clear()
+        # Force the gui to redraw
+        QtCore.QCoreApplication.processEvents()
 
-    def text(self):
+    def text(self) -> str:
         return self._document.toPlainText().strip()
 
     def write(self, text: str) -> None:
@@ -130,7 +132,7 @@ class Console(QtWidgets.QWidget):
         self.ui.consoleText.setTextCursor(cursor)
         QtCore.QCoreApplication.processEvents()
 
-    def pop_alert(self, text: str):
+    def pop_alert(self, text: str) -> None:
         """Provide information to user that is not log information.
 
         For example, provide a user with the message that a configuration is
@@ -179,7 +181,7 @@ class WorkingState(AbsState):
         self.context.console.write("Done")
         self.context.current_state = IdleState(context=self.context)
 
-    def _run(self, worker: "Worker", paths: typing.List[str]):
+    def _run(self, worker: "Worker", paths: typing.List[str]) -> None:
         try:
             worker.run(paths, self.context.options.get_settings())
         except Exception as error:
@@ -263,21 +265,25 @@ class Worker(QtCore.QObject):
         'optionNoSystemFiles': '--no-system-files'
     }
 
-    def run(self, paths=None, options=None):
+    def run(
+            self,
+            paths: typing.Iterable[str] = None,
+            options: typing.Dict[str, bool] = None
+    ) -> None:
         options = options or {}
+        paths = paths or []
 
         for i, path in enumerate(paths):
             args = self.get_matching_cli_args(path, options)
 
             QtCore.QCoreApplication.processEvents()
-            print(args)
             grabbags.main(args)
             self.progress.emit(i + 1)
         self.finished.emit()
 
     def get_matching_cli_args(
             self, path: str, options: typing.Dict[str, bool]
-    ):
+    ) -> typing.List[str]:
         """Match the gui options to the CLI version of args.
 
         Args:
@@ -297,14 +303,14 @@ class Worker(QtCore.QObject):
 
 class ConsoleLogHandler(logging.Handler):
     def __init__(self,
-                 widget: QtWidgets.QWidget,
+                 widget: Console,
                  level: int = logging.NOTSET) -> None:
 
         super().__init__(level)
         self.formatter = logging.Formatter()
         self.widget = widget
 
-    def emit(self, record) -> None:
+    def emit(self, record: logging.LogRecord) -> None:
         if self.formatter is not None:
             self.widget.write(self.formatter.format(record))
 
