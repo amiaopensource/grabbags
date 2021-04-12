@@ -5,6 +5,8 @@ import logging
 import os
 import re
 import sys
+import typing
+
 from grabbags.bags import is_bag
 import grabbags.utils
 successes = []
@@ -56,11 +58,21 @@ class BagArgumentParser(argparse.ArgumentParser):
         self.set_defaults(bag_info={})
 
 
+
+
+
 def _make_parser():
     parser = BagArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="grabbags!!!",
     )
+
+    parser.add_argument(
+        '--version', "-v",
+        action='version',
+        version=grabbags.utils.current_version()
+    )
+
     parser.add_argument(
         "--processes",
         type=int,
@@ -238,19 +250,7 @@ def make_bag(bag_dir, args):
     LOGGER.info(_("Bagged %s"), bag.path)
 
 
-def main():
-
-    parser = _make_parser()
-    args = parser.parse_args()
-
-    if args.processes < 0:
-        parser.error(_("The number of processes must be 0 or greater"))
-
-    if args.fast and not args.validate:
-        parser.error(_("--fast is only allowed as an option for --validate!"))
-
-    _configure_logging(args)
-
+def run(args: argparse.Namespace):
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
@@ -308,6 +308,27 @@ def main():
             _("The following folders are not bags: %s"),
             ", ".join(not_a_bag)
         )
+
+
+def main(
+        argv: typing.List[str] = None,
+        runner: typing.Callable[[argparse.Namespace], None] = None
+) -> None:
+
+    argv = argv or sys.argv
+    parser: argparse.ArgumentParser = _make_parser()
+    args: argparse.Namespace = parser.parse_args(args=argv)
+    if args.processes < 0:
+        parser.error(_("The number of processes must be 0 or greater"))
+
+    if args.fast and not args.validate:
+        parser.error(_("--fast is only allowed as an option for --validate!"))
+
+    _configure_logging(args)
+
+    runner = runner or run
+    runner(args)
+
 
 if __name__ == "__main__":
     main()
