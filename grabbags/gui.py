@@ -277,7 +277,9 @@ class Worker(QtCore.QObject):
             args = self.get_matching_cli_args(path, options)
 
             QtCore.QCoreApplication.processEvents()
-            grabbags.main(args)
+            grabbags.run(
+                args=grabbags._make_parser().parse_args(args)
+            )
             self.progress.emit(i + 1)
         self.finished.emit()
 

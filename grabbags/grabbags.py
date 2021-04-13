@@ -247,34 +247,7 @@ def make_bag(bag_dir, args):
     LOGGER.info(_("Bagged %s"), bag.path)
 
 
-def main(argv=None):
-    argv = argv or sys.argv
-    if "--gui" in argv:
-        try:
-            # The import statement to grabbags.gui is here instead of top of
-            # the file to defer loading the module until it's requested. This
-            # way, if grabbags is installed on a machine that doesn't have a
-            # gui, such as a server of ssh, it will not throw an error message
-            # unless explicitly tried by the user.
-            from grabbags import gui  # pylint: disable=import-outside-toplevel
-
-            return gui.main()
-        except ImportError as error:
-            print(f"Unable to load gui. Reason: {error}",
-                  file=sys.stderr
-                  )
-            sys.exit(-1)
-    parser = _make_parser()
-    args = parser.parse_args(argv)
-
-    if args.processes < 0:
-        parser.error(_("The number of processes must be 0 or greater"))
-
-    if args.fast and not args.validate:
-        parser.error(_("--fast is only allowed as an option for --validate!"))
-
-    _configure_logging(args)
-
+def run(args: argparse.Namespace):
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.validate:
@@ -340,6 +313,21 @@ def main(
 ) -> None:
 
     argv = argv or sys.argv
+    if "--gui" in argv:
+        try:
+            # The import statement to grabbags.gui is here instead of top of
+            # the file to defer loading the module until it's requested. This
+            # way, if grabbags is installed on a machine that doesn't have a
+            # gui, such as a server of ssh, it will not throw an error message
+            # unless explicitly tried by the user.
+            from grabbags import gui  # pylint: disable=import-outside-toplevel
+
+            return gui.main()
+        except ImportError as error:
+            print(f"Unable to load gui. Reason: {error}",
+                  file=sys.stderr
+                  )
+            sys.exit(-1)
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
     if args.processes < 0:
