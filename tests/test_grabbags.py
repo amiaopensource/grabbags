@@ -1,5 +1,7 @@
 import argparse
+import logging
 import os
+import sys
 from unittest.mock import Mock
 
 import grabbags.utils
@@ -83,3 +85,27 @@ class TestCliArgs:
         assert run.called is True
 
 
+@pytest.mark.parametrize("system_file",
+                         [
+                             'Thumbs.db',
+                             '.DS_Store',
+                             '._test'
+                         ])
+def test_clean_bags_system_files(tmpdir, system_file):
+    from grabbags import grabbags
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    grabbags.main([tmpdir.strpath])
+    (tmpdir / "bag" / "data" / system_file).ensure()
+    grabbags.main([tmpdir.strpath, "--clean"])
+    assert (tmpdir / "bag" / "data" / system_file).exists() is False
+    assert (tmpdir / "bag" / "data" / "text.txt").exists()
+
+
+def test_clean_bags_no_system_files(tmpdir):
+    from grabbags import grabbags
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    grabbags.main([tmpdir.strpath])
+    grabbags.main([tmpdir.strpath, "--clean"])
+    assert (tmpdir / "bag" / "data" / "text.txt").exists()

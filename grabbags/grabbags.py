@@ -226,7 +226,7 @@ def clean_bag(bag_dir):
         for payload_file in bag.compare_manifests_with_fs()[1]:
             if grabbags.utils.is_system_file(payload_file):
                 LOGGER.info("Removing {}".format(bag_dir.path))
-                os.remove(payload_file)
+                os.remove(os.path.join(bag_dir.path, payload_file))
             else:
                 LOGGER.warning("Not removing {}".format(bag_dir.path))
 
