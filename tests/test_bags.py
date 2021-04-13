@@ -5,7 +5,6 @@ import shutil
 import grabbags.bags
 import pathlib
 
-
 @pytest.fixture()
 def sample_bags(tmpdir_factory):
     data_dir = tmpdir_factory.mktemp("data")
