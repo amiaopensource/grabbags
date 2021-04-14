@@ -66,7 +66,6 @@ def _make_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="grabbags!!!",
     )
-
     parser.add_argument(
         '--version', "-v",
         action='version',
@@ -94,7 +93,9 @@ def _make_parser():
     )
     parser.add_argument(
         "--clean",
-        action="store_true",
+        dest="action_type",
+        action="store_const",
+        const="clean",
         help=_(
             "Remove remove any system files not in manifest of a bag."
             " The following files will be deleted: .DS_Store, Thumbs.db, "
@@ -103,7 +104,10 @@ def _make_parser():
     )
     parser.add_argument(
         "--validate",
-        action="store_true",
+        # action="store_true",
+        dest="action_type",
+        action="store_const",
+        const="validate",
         help=_(
             "Validate existing bags in the provided directories instead of"
             " creating new ones"
@@ -253,7 +257,8 @@ def make_bag(bag_dir, args):
 def run(args: argparse.Namespace):
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
-            if args.validate:
+            if args.action_type == "validate":
+            # if args.validate:
                 action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
@@ -263,7 +268,8 @@ def run(args: argparse.Namespace):
                         {"bag": bag_dir.path, "error": e}
                     )
                     failures.append(bag_dir.path)
-            elif args.clean:
+            elif args.action_type == "clean":
+            # elif args.clean:
                 action = 'cleaned'
                 try:
                     clean_bag(bag_dir)
@@ -274,7 +280,8 @@ def run(args: argparse.Namespace):
                         {"bag": bag_dir.path, "error": e}
                     )
                     failures.append(bag_dir.path)
-            else:
+            elif args.action_type == "create":
+            # else:
                 action = 'created'
                 try:
                     make_bag(bag_dir, args)
@@ -315,14 +322,36 @@ def main(
         runner: typing.Callable[[argparse.Namespace], None] = None
 ) -> None:
 
-    argv = argv or sys.argv
+    argv = argv or sys.argv[1:]
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
+    if args.action_type is None:
+        args.action_type = "create"
+
     if args.processes < 0:
         parser.error(_("The number of processes must be 0 or greater"))
 
-    if args.fast and not args.validate:
-        parser.error(_("--fast is only allowed as an option for --validate!"))
+    if args.no_checksums and args.action_type != "validate":
+        parser.error(
+            _("--no-checksums is only allowed as an option with --validate")
+        )
+    if args.action_type == "clean" and args.no_system_files:
+        parser.error(
+            _("Can't run --clean and --no-system-files at the same time")
+        )
+    if args.action_type == "validate" and args.checksums is not None:
+        parser.error(_("Can't specify a checksum algorithm and "
+                       "run --validate at the same time"))
+
+    if args.action_type == "clean" and args.checksums is not None:
+        parser.error(_("Can't specify a checksum algorithm and "
+                       "run --clean at the same time"))
+
+    if args.action_type == "clean" and args.action_type == "validate":
+        parser.error(_("Can't run --clean and --validate at the same time"))
+
+    if args.fast and args.action_type != "validate":
+        parser.error(_("--fast is only allowed as an option with --validate"))
 
     _configure_logging(args)
 
