@@ -199,7 +199,7 @@ def _configure_logging(opts):
 
 def validate_bag(bag_dir, args):
     if not is_bag(bag_dir.path):
-        LOGGER.warn(_("%s is not a bag. Skipped."), bag_dir.path)
+        LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
         not_a_bag.append(bag_dir.path)
         return 
 
