@@ -260,7 +260,6 @@ def run(args: argparse.Namespace):
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.action_type == "validate":
-                action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
                 except bagit.BagError as error:
@@ -270,7 +269,6 @@ def run(args: argparse.Namespace):
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "clean":
-                action = 'cleaned'
                 try:
                     clean_bag(bag_dir)
                     successes.append(bag_dir.path)
@@ -281,7 +279,6 @@ def run(args: argparse.Namespace):
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "create":
-                action = 'created'
                 try:
                     make_bag(bag_dir, args)
                     #successes.append(bag_dir.path)
@@ -291,6 +288,12 @@ def run(args: argparse.Namespace):
                         {"bag": bag_dir.path, "error": error}
                     )
                     failures.append(bag_dir.path)
+
+    action: str = {
+        'validate': 'validated',
+        'clean': 'cleaned',
+        'create': 'created'
+    }.get(args.action_type, "")
 
     LOGGER.info(
         _("%(count)s bags %(action)s successfully"),
