@@ -1,6 +1,13 @@
 on: [push, pull_request]
 name: Multi-platform Compatibility Test
 jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: ammaraskar/sphinx-action@master
+      with:
+        docs-folder: "docs/
   build:
     runs-on: ${{ matrix.os }}
     strategy:
