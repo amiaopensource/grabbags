@@ -263,10 +263,10 @@ def run(args: argparse.Namespace):
                 action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
-                except bagit.BagError as e:
+                except bagit.BagError as error:
                     LOGGER.error(
                         _("%(bag)s is invalid: %(error)s"),
-                        {"bag": bag_dir.path, "error": e}
+                        {"bag": bag_dir.path, "error": error}
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "clean":
@@ -274,10 +274,10 @@ def run(args: argparse.Namespace):
                 try:
                     clean_bag(bag_dir)
                     successes.append(bag_dir.path)
-                except bagit.BagError as e:
+                except bagit.BagError as error:
                     LOGGER.error(
                         _("%(bag)s cannot be cleaned: %(error)s"),
-                        {"bag": bag_dir.path, "error": e}
+                        {"bag": bag_dir.path, "error": error}
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "create":
@@ -285,10 +285,10 @@ def run(args: argparse.Namespace):
                 try:
                     make_bag(bag_dir, args)
                     #successes.append(bag_dir.path)
-                except bagit.BagError as e:
+                except bagit.BagError as error:
                     LOGGER.error(
                         _("%(bag)s could not be bagged: %(error)s"),
-                        {"bag": bag_dir.path, "error": e}
+                        {"bag": bag_dir.path, "error": error}
                     )
                     failures.append(bag_dir.path)
 
