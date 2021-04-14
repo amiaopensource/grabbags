@@ -288,6 +288,10 @@ def run(args: argparse.Namespace):
                         {"bag": bag_dir.path, "error": error}
                     )
                     failures.append(bag_dir.path)
+            else:
+                raise ValueError(
+                    f"args contain invalid action_type: {args.action_type}"
+                )
 
     action: str = {
         'validate': 'validated',
