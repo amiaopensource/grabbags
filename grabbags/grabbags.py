@@ -232,10 +232,10 @@ def clean_bag(bag_dir):
     if bag.compare_manifests_with_fs()[1]:
         for payload_file in bag.compare_manifests_with_fs()[1]:
             if grabbags.utils.is_system_file(payload_file):
-                LOGGER.info("Removing {}".format(bag_dir.path))
+                LOGGER.info("Removing system files from {}".format(bag_dir.path))
                 os.remove(os.path.join(bag_dir.path, payload_file))
             else:
-                LOGGER.warning("Not removing {}".format(bag_dir.path))
+                LOGGER.info("Not removing system files from {}".format(bag_dir.path))
 
 
 def make_bag(bag_dir: "os.DirEntry[str]", args):
