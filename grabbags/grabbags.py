@@ -91,7 +91,8 @@ def _make_parser():
         action="store_true",
         help=_("Suppress all progress information other than errors"),
     )
-    parser.add_argument(
+    command_group = parser.add_mutually_exclusive_group()
+    command_group.add_argument(
         "--clean",
         dest="action_type",
         action="store_const",
@@ -102,9 +103,8 @@ def _make_parser():
             " Appledoubles (._*), Icon files"
         ),
     )
-    parser.add_argument(
+    command_group.add_argument(
         "--validate",
-        # action="store_true",
         dest="action_type",
         action="store_const",
         const="validate",
@@ -113,6 +113,7 @@ def _make_parser():
             " creating new ones"
         ),
     )
+    parser.set_defaults(action_type='create')
     parser.add_argument(
         "--fast",
         action="store_true",
@@ -258,7 +259,6 @@ def run(args: argparse.Namespace):
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.action_type == "validate":
-            # if args.validate:
                 action = 'validated'
                 try:
                     validate_bag(bag_dir, args)
@@ -269,7 +269,6 @@ def run(args: argparse.Namespace):
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "clean":
-            # elif args.clean:
                 action = 'cleaned'
                 try:
                     clean_bag(bag_dir)
@@ -281,7 +280,6 @@ def run(args: argparse.Namespace):
                     )
                     failures.append(bag_dir.path)
             elif args.action_type == "create":
-            # else:
                 action = 'created'
                 try:
                     make_bag(bag_dir, args)
@@ -325,8 +323,6 @@ def main(
     argv = argv or sys.argv[1:]
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
-    if args.action_type is None:
-        args.action_type = "create"
 
     if args.processes < 0:
         parser.error(_("The number of processes must be 0 or greater"))
@@ -346,9 +342,6 @@ def main(
     if args.action_type == "clean" and args.checksums is not None:
         parser.error(_("Can't specify a checksum algorithm and "
                        "run --clean at the same time"))
-
-    if args.action_type == "clean" and args.action_type == "validate":
-        parser.error(_("Can't run --clean and --validate at the same time"))
 
     if args.fast and args.action_type != "validate":
         parser.error(_("--fast is only allowed as an option with --validate"))
