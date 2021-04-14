@@ -1,11 +1,12 @@
 import argparse
-import bagit
 import gettext
 import logging
 import os
 import re
 import sys
 import typing
+
+import bagit
 
 from grabbags.bags import is_bag
 import grabbags.utils
