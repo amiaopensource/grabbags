@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/amiaopensource/grabbags.svg?branch=master)](https://travis-ci.org/amiaopensource/grabbags)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=amiaopensource_grabbags&metric=alert_status)](https://sonarcloud.io/dashboard?id=amiaopensource_grabbags)
+
 ## Introduction
 
 Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also eliminate system files before bagging. Even better, it can delete system files automatically in existing bags if they haven't been written to the bag manifest.
@@ -10,7 +11,6 @@ Grabbags is an enhanced implementation of the Library of Congress's BagIt Librar
 For installation, see [getting_started.md](getting_started.md)
 
 ## Using grabbags
-
 To run grabbags, use the command:
 ` $ grabbags (optional flags) (target directory path)`
 
@@ -37,7 +37,8 @@ Users can optionally use the flags `--validate --no-checksums`. This only valida
 ## Cleaning Bags
 Grabbags can delete system files within existing bags if they haven't already been written to the bag manifest. To use this feature, run the following:
 
-`$ grabbags --clean (Target directory)`
+`$ grabbags --clean (target directory path)`
+
 Remember, that all of your bags should be in subdirectories inside of the target directory.
 
 ## Enhanced Logging
