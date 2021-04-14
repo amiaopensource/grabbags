@@ -109,3 +109,146 @@ def test_clean_bags_no_system_files(tmpdir):
     grabbags.main([tmpdir.strpath])
     grabbags.main([tmpdir.strpath, "--clean"])
     assert (tmpdir / "bag" / "data" / "text.txt").exists()
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--fast", "fakepath"],
+        ['--no-checksums', "fakepath"],
+        ['--no-checksums', '--no-system-files', "fakepath"],
+        ['--validate', '--clean', "fakepath"],
+        ['--clean', '--no-checksums', "fakepath"],
+        ['--processes', 'j', "fakepath"],
+        ['--validate', '--sha256', "fakepath"],
+        ['--clean', '--no-system-files', "fakepath"],
+        ['--clean', '--md5', "fakepath"],
+        ['--clean'],
+    ])
+def test_invalid_cli_args(arguments):
+    from grabbags import grabbags
+    with pytest.raises(SystemExit):
+        run = Mock()
+        grabbags.main(arguments, runner=run)
+        run.assert_not_called()
+
+
+@pytest.mark.parametrize("arguments", [
+    ['--validate', 'fakepath'],
+    ['--validate', '--fast', 'fakepath'],
+    ["fakepath"],
+])
+def test_valid_cli_args(tmpdir, arguments):
+    from grabbags import grabbags
+    run = Mock()
+    grabbags.main(arguments, runner=run)
+    run.assert_called()
+
+
+@pytest.fixture()
+def fake_bag_path(monkeypatch):
+    fake_path_name = "fakepath"
+
+    def scandir(path):
+        if path == fake_path_name:
+            for b in [
+                Mock(is_dir=Mock(return_value=True),
+                     path=os.path.join(path, "bag")
+                     )
+            ]:
+                yield b
+    monkeypatch.setattr(os, "scandir", scandir)
+    return fake_path_name
+
+
+def test_run_validate(monkeypatch, fake_bag_path):
+    from grabbags import grabbags
+    from argparse import Namespace
+    args = Namespace(
+        action_type='validate',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    validate_bag = Mock()
+    monkeypatch.setattr(grabbags, "validate_bag", validate_bag)
+    grabbags.run(args)
+    validate_bag.assert_called()
+
+
+def test_run_cleaned(monkeypatch, fake_bag_path):
+    from grabbags import grabbags
+    from argparse import Namespace
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    clean_bag = Mock()
+    monkeypatch.setattr(grabbags, "clean_bag", clean_bag)
+    grabbags.run(args)
+    clean_bag.assert_called()
+
+
+def test_run_create(monkeypatch, fake_bag_path):
+    from grabbags import grabbags
+    from argparse import Namespace
+    args = Namespace(
+        action_type='create',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    make_bag = Mock()
+    monkeypatch.setattr(grabbags, "make_bag", make_bag)
+    grabbags.run(args)
+    make_bag.assert_called()
+
+
+def test_run_create_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
+    from grabbags import grabbags
+    from bagit import BagError
+    from argparse import Namespace
+    make_bag = Mock(side_effect=BagError)
+    monkeypatch.setattr(grabbags, "make_bag", make_bag)
+    args = Namespace(
+        action_type='create',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    grabbags.run(args)
+    assert any("could not be bagged" in m for m in caplog.messages)
+
+
+def test_run_validate_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
+    from grabbags import grabbags
+    from bagit import BagError
+    from argparse import Namespace
+    validate_bag = Mock(side_effect=BagError)
+    monkeypatch.setattr(grabbags, "validate_bag", validate_bag)
+    args = Namespace(
+        action_type='validate',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    grabbags.run(args)
+    assert any("is invalid" in m for m in caplog.messages)
+
+
+def test_run_clean_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
+    from grabbags import grabbags
+    from bagit import BagError
+    from argparse import Namespace
+    clean_bag = Mock(side_effect=BagError)
+    monkeypatch.setattr(grabbags, "clean_bag", clean_bag)
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            fake_bag_path
+        ]
+    )
+    grabbags.run(args)
+    assert any("cannot be cleaned" in m for m in caplog.messages)
