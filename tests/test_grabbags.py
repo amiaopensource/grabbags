@@ -252,3 +252,25 @@ def test_run_clean_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     )
     grabbags.run(args)
     assert any("cannot be cleaned" in m for m in caplog.messages)
+
+
+def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
+    from argparse import Namespace
+    from grabbags import grabbags
+
+    (tmpdir / "empty_bag").ensure_dir()
+
+    args = Namespace(
+        action_type='create',
+        no_system_files=True,
+        bag_info={},
+        processes=1,
+        checksums=[],
+        directories=[
+            tmpdir.strpath
+        ]
+    )
+
+    grabbags.run(args)
+    assert (tmpdir / "empty_bag" / "data").exists() is False
+    assert any("is an empty directory" in m for m in caplog.messages)

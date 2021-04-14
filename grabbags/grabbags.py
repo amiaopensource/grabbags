@@ -14,6 +14,7 @@ successes = []
 failures = []
 not_a_bag = []
 
+
 def find_locale_dir():
     for prefix in (os.path.dirname(__file__), sys.prefix):
         locale_dir = os.path.join(prefix, "locale")
@@ -237,7 +238,11 @@ def clean_bag(bag_dir):
                 LOGGER.warning("Not removing {}".format(bag_dir.path))
 
 
-def make_bag(bag_dir, args):
+def make_bag(bag_dir: "os.DirEntry[str]", args):
+    if len(os.listdir(bag_dir.path)) == 0:
+        LOGGER.warning(_("%s is an empty directory. Skipped."), bag_dir.path)
+        return
+
     if is_bag(bag_dir.path):
         LOGGER.warning(_("%s is already a bag. Skipped."), bag_dir.path)
         return
