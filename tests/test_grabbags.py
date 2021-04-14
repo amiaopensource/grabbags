@@ -147,13 +147,13 @@ def test_valid_cli_args(tmpdir, arguments):
 
 @pytest.fixture()
 def fake_bag_path(monkeypatch):
-    fake_path_name ="fakepath"
+    fake_path_name = "fakepath"
 
     def scandir(path):
         if path == fake_path_name:
             for b in [
                 Mock(is_dir=Mock(return_value=True),
-                    path=os.path.join(path, "bag")
+                     path=os.path.join(path, "bag")
                      )
             ]:
                 yield b
