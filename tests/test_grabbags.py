@@ -274,3 +274,80 @@ def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
     grabbags.run(args)
     assert (tmpdir / "empty_bag" / "data").exists() is False
     assert any("is an empty directory" in m for m in caplog.messages)
+
+
+
+#
+# @pytest.fixture()
+# def fake_bag_path_with_no_system_file(tmpdir):
+#     fake_path_name = "fakepath"
+#
+#     # def scandir(path):
+#     #     if path == fake_path_name:
+#     #         for b in [
+#     #             Mock(is_dir=Mock(return_value=True),
+#     #                  path=os.path.join(path, "bag")
+#     #                  )
+#     #         ]:
+#     #             yield b
+#     # monkeypatch.setattr(os, "scandir", scandir)
+#     return fake_path_name
+#
+
+def test_run_clean_no_system_files_message(monkeypatch, tmpdir, caplog):
+
+    from grabbags import grabbags
+    from argparse import Namespace
+    caplog.set_level(logging.INFO)
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    run_args = Namespace(
+        action_type='create',
+        no_system_files=True,
+        bag_info={},
+        processes=1,
+        checksums=["md5"],
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(run_args)
+
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(args)
+    assert any("No system files located" in m for m in caplog.messages)
+
+
+def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
+
+    from grabbags import grabbags
+    from argparse import Namespace
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    run_args = Namespace(
+        action_type='create',
+        no_system_files=True,
+        bag_info={},
+        processes=1,
+        checksums=["md5"],
+        directories=[
+            tmpdir
+        ]
+    )
+
+    grabbags.run(run_args)
+    (tmpdir / "bag" / "data" / "unexpected_file.txt").ensure()
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(args)
+    assert any("Found file not in manifest" in m for m in caplog.messages)
+
