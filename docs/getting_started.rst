@@ -1,2 +1,1 @@
-
-.. mdinclude:: ../getting_started.md
+.. include:: ../getting_started.rst
