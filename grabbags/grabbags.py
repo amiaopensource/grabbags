@@ -60,9 +60,6 @@ class BagArgumentParser(argparse.ArgumentParser):
         self.set_defaults(bag_info={})
 
 
-
-
-
 def _make_parser():
     parser = BagArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -202,7 +199,7 @@ def validate_bag(bag_dir, args):
     if not is_bag(bag_dir.path):
         LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
         not_a_bag.append(bag_dir.path)
-        return 
+        return
 
     bag = bagit.Bag(bag_dir.path)
     # validate throws a BagError or BagValidationError
@@ -220,7 +217,7 @@ def validate_bag(bag_dir, args):
             bag_dir.path
         )
     else:
-        LOGGER.info(_("%s is valid"), bag_dir.path) 
+        LOGGER.info(_("%s is valid"), bag_dir.path)
 
 
 def clean_bag(bag_dir):
@@ -334,6 +331,22 @@ def main(
 ) -> None:
 
     argv = argv or sys.argv[1:]
+    if "--gui" in argv:
+        try:
+            # The import statement to grabbags.gui is here instead of top of
+            # the file to defer loading the module until it's requested. This
+            # way, if grabbags is installed on a machine that doesn't have a
+            # gui, such as a server of ssh, it will not throw an error message
+            # unless explicitly tried by the user.
+            from grabbags import gui  # pylint: disable=import-outside-toplevel
+
+            return gui.main()
+        except ImportError as error:
+            print(f"Unable to load gui. Reason: {error}",
+                  file=sys.stderr
+                  )
+            sys.exit(-1)
+
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
 
