@@ -1,7 +1,5 @@
-import argparse
 import logging
 import os
-import sys
 from unittest.mock import Mock
 
 import grabbags.utils
@@ -276,24 +274,6 @@ def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
     assert any("is an empty directory" in m for m in caplog.messages)
 
 
-
-#
-# @pytest.fixture()
-# def fake_bag_path_with_no_system_file(tmpdir):
-#     fake_path_name = "fakepath"
-#
-#     # def scandir(path):
-#     #     if path == fake_path_name:
-#     #         for b in [
-#     #             Mock(is_dir=Mock(return_value=True),
-#     #                  path=os.path.join(path, "bag")
-#     #                  )
-#     #         ]:
-#     #             yield b
-#     # monkeypatch.setattr(os, "scandir", scandir)
-#     return fake_path_name
-#
-
 def test_run_clean_no_system_files_message(monkeypatch, tmpdir, caplog):
 
     from grabbags import grabbags
@@ -350,4 +330,3 @@ def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
     )
     grabbags.run(args)
     assert any("Found file not in manifest" in m for m in caplog.messages)
-
