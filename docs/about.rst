@@ -1,2 +1,4 @@
+About
+=====
 
 .. include:: ../README.md
