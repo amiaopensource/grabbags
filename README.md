@@ -62,5 +62,4 @@ The 2021 Project Team was:
 * Jonathan Farbowitz
 * Bryn Knowles
 * Milo Thiesen
-* Joanna White
 
