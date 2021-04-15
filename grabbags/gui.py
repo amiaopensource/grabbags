@@ -7,7 +7,7 @@ import typing
 import sys
 
 from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
-
+import bagit
 from grabbags import grabbags
 
 __all__ = ['MainWindow', 'main']
@@ -82,7 +82,20 @@ class Console(QtWidgets.QWidget):
         layout.addWidget(self.ui)
         self.setLayout(layout)
         self._document = QtGui.QTextDocument(self)
+
+        self.ui.consoleText = typing.cast(
+            QtWidgets.QTextBrowser, self.ui.consoleText
+        )
         self.ui.consoleText.setDocument(self._document)
+        self.info_text_layout = QtWidgets.QVBoxLayout()
+        self.info_text = QtWidgets.QLabel()
+        self.ui.consoleText.setLayout(self.info_text_layout)
+        self.info_text_layout.addWidget(self.info_text, alignment=QtCore.Qt.AlignCenter)
+
+    def refresh(self):
+        self.ui.consoleText.setDocument(self._document)
+        self.info_text.clear()
+        QtCore.QCoreApplication.processEvents()
 
     @staticmethod
     def check_valid_dragged_data(sources: typing.List[str]) -> bool:
@@ -101,16 +114,17 @@ class Console(QtWidgets.QWidget):
             return
 
         paths = "".join(
-            f"<li>{s.path()}</li>" for s in event.mimeData().urls()
+            f"{s.path()}" for s in event.mimeData().urls()
         )
 
         self.pop_alert(f"Do you want to bag the following directories? :\n"
-                       f"<ul>{paths}</ul>"
+                       f"{paths}"
                        )
         event.accept()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        self.write("Bagging...")
+        self.write("Starting")
+        self.refresh()
         event.accept()
         self.directories_entered.emit([
                 s.path() for s in event.mimeData().urls()
@@ -128,7 +142,7 @@ class Console(QtWidgets.QWidget):
         cursor = QtGui.QTextCursor(self._document)
         cursor.movePosition(cursor.End)
         cursor.insertBlock()
-        cursor.insertHtml(f"<p>{text}</p>")
+        cursor.insertHtml(text)
         self.ui.consoleText.setTextCursor(cursor)
         QtCore.QCoreApplication.processEvents()
 
@@ -142,7 +156,8 @@ class Console(QtWidgets.QWidget):
             text:
 
         """
-        self.ui.consoleText.setText(f"<h3>{text}</h3>")
+        self.info_text.setText(text)
+        self.ui.consoleText.clear()
         QtCore.QCoreApplication.processEvents()
 
 
@@ -163,7 +178,7 @@ class WorkingState(AbsState):
         self.context.console.setAcceptDrops(False)
         self.context.worker_thread = QtCore.QThread()
         worker = Worker()
-        QtCore.QCoreApplication.processEvents()
+        self.context.console.refresh()
         worker.moveToThread(self.context.worker_thread)
 
         self.context.worker_thread.started.connect(
@@ -177,7 +192,12 @@ class WorkingState(AbsState):
             self.context.worker_thread.deleteLater
         )
 
+        worker.finished.connect(self.on_finished)
+
+        self.context.console.refresh()
         self.context.worker_thread.start()
+
+    def on_finished(self):
         self.context.console.write("Done")
         self.context.current_state = IdleState(context=self.context)
 
@@ -235,13 +255,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._layout.addWidget(self.options)
         self._layout.addWidget(self.console)
+        self.buttons_layout = QtWidgets.QHBoxLayout()
+        self._layout.addLayout(self.buttons_layout)
         self.clearLogButton = QtWidgets.QPushButton(text="Clear Console")
         self.clearLogButton.clicked.connect(self.console.clear)
-        self._layout.addWidget(self.clearLogButton)
+        self.buttons_layout.addItem(
+            QtWidgets.QSpacerItem(
+                0,
+                0,
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Minimum
+            )
+        )
+        self.buttons_layout.addWidget(self.clearLogButton)
 
+        self.buttons_layout.addItem(
+            QtWidgets.QSpacerItem(
+                0,
+                0,
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Minimum
+            )
+        )
         self.setCentralWidget(main_widget)
         # ==================
         self.worker_thread: typing.Optional[QtCore.QThread] = None
+
         # Set state to idle
         self.current_state: AbsState = IdleState(self)
         self.console.directories_entered.connect(
@@ -277,7 +316,14 @@ class Worker(QtCore.QObject):
             args = self.get_matching_cli_args(path, options)
 
             QtCore.QCoreApplication.processEvents()
-            grabbags.main(args)
+            grabbags_args = grabbags._make_parser().parse_args(args)
+
+            starting_message = \
+                f"Looking in the following directories: " \
+                f"{', '.join(grabbags_args.directories)}"
+
+            grabbags.LOGGER.info(starting_message)
+            grabbags.run(args=grabbags_args)
             self.progress.emit(i + 1)
         self.finished.emit()
 
@@ -307,12 +353,25 @@ class ConsoleLogHandler(logging.Handler):
                  level: int = logging.NOTSET) -> None:
 
         super().__init__(level)
-        self.formatter = logging.Formatter()
+        self.formatter = QtHtmlFormatter()
         self.widget = widget
 
     def emit(self, record: logging.LogRecord) -> None:
         if self.formatter is not None:
             self.widget.write(self.formatter.format(record))
+
+
+class QtHtmlFormatter(logging.Formatter):
+
+    def format(self, record):
+        message_text = super().format(record)
+        level_styles = {
+            "WARNING": "color:yellow",
+            "ERROR": "color:red",
+        }
+        return f"<div style='{level_styles.get(record.levelname)}'>" \
+               f"<p>{message_text}<p>" \
+               f"</div>"
 
 
 def main(argv: typing.Optional[typing.List[str]] = None) -> None:
@@ -323,11 +382,14 @@ def main(argv: typing.Optional[typing.List[str]] = None) -> None:
     app = QtWidgets.QApplication(argv)
     main_window = MainWindow()
     console_log_handler = ConsoleLogHandler(main_window.console)
+    grabbags.LOGGER.setLevel(logging.INFO)
     grabbags.LOGGER.addHandler(console_log_handler)
+    bagit.LOGGER.addHandler(console_log_handler)
+    bagit.LOGGER.setLevel(logging.INFO)
     main_window.setWindowTitle("Grabbags GUI Demo")
     main_window.resize(640, 480)
     main_window.show()
-    main_window.console.write("Drag folders over here")
+    main_window.console.pop_alert("Drag folders over here")
     sys.exit(app.exec_())
 
 

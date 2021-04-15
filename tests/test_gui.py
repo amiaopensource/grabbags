@@ -98,11 +98,11 @@ class TestConsole:
     def test_pop_alert_calls_setText_directly(self, qtbot):
         console = gui.Console()
         qtbot.add_widget(console)
-        console.ui.consoleText.setText = Mock()
+        console.info_text.setText = Mock()
         console.pop_alert("blababa")
-        assert console.ui.consoleText.setText.called is True and \
+        assert console.info_text.setText.called is True and \
                "blababa" in \
-               console.ui.consoleText.setText.call_args_list[0][0][0]
+               console.info_text.setText.call_args_list[0][0][0]
 
     def test_drop_event(self, qtbot):
         console = gui.Console()
