@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='grabbags',
-    version='0.0.2.dev0',
+    version='0.0.2',
     packages=['grabbags'],
     url='https://github.com/amiaopensource/grabbags',
     license='GPLv3',
