@@ -8,7 +8,7 @@
 Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also eliminate system files before bagging. Even better, it can delete system files automatically in existing bags if they haven't been written to the bag manifest.
 
 ## Installing grabbags
-For installation, see [getting_started.md](getting_started.md)
+For installation, see [getting_started.rst](getting_started.rst)
 
 ## Using grabbags
 To run grabbags, use the command:
