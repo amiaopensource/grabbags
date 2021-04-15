@@ -1,7 +1,5 @@
-import argparse
 import logging
 import os
-import sys
 from unittest.mock import Mock
 
 import grabbags.utils
@@ -274,3 +272,61 @@ def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
     grabbags.run(args)
     assert (tmpdir / "empty_bag" / "data").exists() is False
     assert any("is an empty directory" in m for m in caplog.messages)
+
+
+def test_run_clean_no_system_files_message(monkeypatch, tmpdir, caplog):
+
+    from grabbags import grabbags
+    from argparse import Namespace
+    caplog.set_level(logging.INFO)
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    run_args = Namespace(
+        action_type='create',
+        no_system_files=True,
+        bag_info={},
+        processes=1,
+        checksums=["md5"],
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(run_args)
+
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(args)
+    assert any("No system files located" in m for m in caplog.messages)
+
+
+def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
+
+    from grabbags import grabbags
+    from argparse import Namespace
+
+    (tmpdir / "bag" / "text.txt").ensure()
+    run_args = Namespace(
+        action_type='create',
+        no_system_files=True,
+        bag_info={},
+        processes=1,
+        checksums=["md5"],
+        directories=[
+            tmpdir
+        ]
+    )
+
+    grabbags.run(run_args)
+    (tmpdir / "bag" / "data" / "unexpected_file.txt").ensure()
+    args = Namespace(
+        action_type='clean',
+        directories=[
+            tmpdir
+        ]
+    )
+    grabbags.run(args)
+    assert any("Found file not in manifest" in m for m in caplog.messages)
