@@ -8,14 +8,20 @@
 Grabbags is an enhanced implementation of the Library of Congress's BagIt Library. Grabbags allows users to do bulk creation and validation of bags. Grabbags can also eliminate system files before bagging. Even better, it can delete system files automatically in existing bags if they haven't been written to the bag manifest.
 
 ## Installing grabbags
-For installation, see [getting_started.rst](getting_started.rst)
+
+Grabbags can be installed on a Mac via the package manager [Homebrew](https://brew.sh/). Once Homebrew is installed on your system run the following commands:
+1. `brew update` This makes sure Homebrew and all of its information about formulae are up to date. 
+3. `brew tap amiaopensource/amiaos` This will allow you to start using the [AMIA Open Source tap](https://github.com/amiaopensource/homebrew-amiaos). 
+4. `brew install grabbags` Installs the script.
+
+For installation on Windows or to install in development mode, see [getting_started.rst](getting_started.rst)
 
 ## Using grabbags
 To run grabbags, use the command:
-` $ grabbags (optional flags) (target directory path)`
+`grabbags (optional flags) (target directory path)`
 
 By default, grabbags will do bulk creation of bags. It assumes that a target directory contains many other subdirectories inside of it that will be turned into bags. So set up your directories accordingly. You can also give the command multiple target directories
-` $ grabbags (optional flags) (target directory path 1) (target directory path 2)`
+`grabbags (optional flags) (target directory path 1) (target directory path 2)`
 
 Since grabbags uses the bagit Python library, all the functionality of bagit (including adding metadata fields and choosing checksum algorithms) should be available for bag creation.
 
@@ -31,13 +37,13 @@ Please send a pull request or issue if you have additional information about new
 ### Validate Flags
 Validation of bags has two possible options:
 
-The default behavior of `$ grabbags --validate` is to validate the bag by comparing the checksums of all files with the checksums contained in the manifest.
+The default behavior of `grabbags --validate` is to validate the bag by comparing the checksums of all files with the checksums contained in the manifest.
 Users can optionally use the flags `--validate --no-checksums`. This only validates the Oxsum of the bag, the number of files, and the proper files according to the bagit specification. Using the --no-checksums flag is equivalent to running `--validate --completeness-only`
 
 ## Cleaning Bags
 Grabbags can delete system files within existing bags if they haven't already been written to the bag manifest. To use this feature, run the following:
 
-`$ grabbags --clean (target directory path)`
+`grabbags --clean (target directory path)`
 
 Remember, that all of your bags should be in subdirectories inside of the target directory.
 
