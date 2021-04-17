@@ -5,11 +5,13 @@ import os
 import re
 import sys
 import typing
+import warnings
 
 import bagit
 
 from grabbags.bags import is_bag
 import grabbags.utils
+
 successes = []
 failures = []
 not_a_bag = []
@@ -199,6 +201,9 @@ def _configure_logging(opts):
 
 
 def validate_bag(bag_dir, args):
+    warnings.warn(
+        "Use GrabbagsRunner.validate_bag() instead", DeprecationWarning
+    )
     if not is_bag(bag_dir.path):
         LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
         not_a_bag.append(bag_dir.path)
@@ -224,6 +229,10 @@ def validate_bag(bag_dir, args):
 
 
 def clean_bag(bag_dir):
+    warnings.warn(
+        "Use GrabbagsRunner.clean_bag() instead",
+        DeprecationWarning
+    )
     if not is_bag(bag_dir.path):
         LOGGER.warning(_("%s is not a bag. Not cleaning."), bag_dir.path)
         return
@@ -246,6 +255,10 @@ def clean_bag(bag_dir):
 
 
 def make_bag(bag_dir: "os.DirEntry[str]", args):
+    warnings.warn(
+        "Use GrabbagsRunner.make_bag() instead",
+        DeprecationWarning
+    )
     if len(os.listdir(bag_dir.path)) == 0:
         LOGGER.warning(_("%s is an empty directory. Skipped."), bag_dir.path)
         return
@@ -266,6 +279,161 @@ def make_bag(bag_dir: "os.DirEntry[str]", args):
         )
     successes.append(bag_dir.path)
     LOGGER.info(_("Bagged %s"), bag.path)
+
+
+class GrabbagsRunner:
+
+    def __init__(self) -> None:
+        self.successes: typing.List[str] = []
+        self.failures: typing.List[str] = []
+        self.not_a_bag: typing.List[str] = []
+
+    def validate_bag(self, bag_dir, args):
+        if not is_bag(bag_dir.path):
+            LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
+            self.not_a_bag.append(bag_dir.path)
+            return
+
+        bag = bagit.Bag(bag_dir.path)
+        # validate throws a BagError or BagValidationError
+        bag.validate(
+            processes=args.processes,
+            fast=args.fast,
+            completeness_only=args.no_checksums,
+        )
+        self.successes.append(bag_dir.path)
+        if args.fast:
+            LOGGER.info(_("%s valid according to Payload-Oxum"), bag_dir.path)
+        elif args.no_checksums:
+            LOGGER.info(
+                _("%s valid according to Payload-Oxum and file manifest"),
+                bag_dir.path
+            )
+        else:
+            LOGGER.info(_("%s is valid"), bag_dir.path)
+
+    @staticmethod
+    def find_bag_dirs(search_root: str) -> "typing.Iterable[os.DirEntry[str]]":
+        yield from filter(lambda i: i.is_dir(), os.scandir(search_root))
+
+    def clean_bag(self, bag_dir):
+        if not is_bag(bag_dir.path):
+            LOGGER.warning(_("%s is not a bag. Not cleaning."), bag_dir.path)
+            return
+
+        bag = bagit.Bag(bag_dir.path)
+        if bag.compare_manifests_with_fs()[1]:
+            for payload_file in bag.compare_manifests_with_fs()[1]:
+                if grabbags.utils.is_system_file(payload_file):
+                    LOGGER.info(
+                        "Removing system files from {}".format(bag_dir.path)
+                    )
+                    os.remove(os.path.join(bag_dir.path, payload_file))
+                else:
+                    LOGGER.warning(
+                        "Found file not in manifest: {}".format(payload_file)
+                    )
+        else:
+            LOGGER.info(
+                "No system files located in {}".format(bag_dir.path))
+
+    def _run_action(self,
+                    action_type: str,
+                    bag_dir: 'os.DirEntry[str]',
+                    args: argparse.Namespace) -> None:
+
+        if action_type == "validate":
+            try:
+                self.validate_bag(bag_dir, args)
+            except bagit.BagError as error:
+                LOGGER.error(
+                    _("%(bag)s is invalid: %(error)s"),
+                    {"bag": bag_dir.path, "error": error}
+                )
+                self.failures.append(bag_dir.path)
+        elif action_type == "clean":
+            try:
+                self.clean_bag(bag_dir)
+                self.successes.append(bag_dir.path)
+            except bagit.BagError as error:
+                LOGGER.error(
+                    _("%(bag)s cannot be cleaned: %(error)s"),
+                    {"bag": bag_dir.path, "error": error}
+                )
+                self.failures.append(bag_dir.path)
+        elif action_type == "create":
+            try:
+                self.make_bag(bag_dir, args)
+            except bagit.BagError as error:
+                LOGGER.error(
+                    _("%(bag)s could not be bagged: %(error)s"),
+                    {"bag": bag_dir.path, "error": error}
+                )
+                self.failures.append(bag_dir.path)
+        else:
+            raise ValueError(
+                f"args contain invalid action_type: {args.action_type}"
+            )
+
+    def make_bag(self, bag_dir: "os.DirEntry[str]", args):
+        if len(os.listdir(bag_dir.path)) == 0:
+            LOGGER.warning(_("%s is an empty directory. Skipped."),
+                           bag_dir.path)
+            return
+
+        if is_bag(bag_dir.path):
+            LOGGER.warning(_("%s is already a bag. Skipped."), bag_dir.path)
+            return
+
+        if args.no_system_files is True:
+            LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
+            grabbags.utils.remove_system_files(root=bag_dir.path)
+
+        bag = bagit.make_bag(
+            bag_dir.path,
+            bag_info=args.bag_info,
+            processes=args.processes,
+            checksums=args.checksums
+        )
+        self.successes.append(bag_dir.path)
+        LOGGER.info(_("Bagged %s"), bag.path)
+
+    def run(self, args: argparse.Namespace) -> None:
+        for bag_parent in args.directories:
+            for bag_dir in self.find_bag_dirs(bag_parent):
+
+                self._run_action(action_type=args.action_type,
+                                 bag_dir=bag_dir,
+                                 args=args)
+
+        action: str = {
+            'validate': 'validated',
+            'clean': 'cleaned',
+            'create': 'created'
+        }.get(args.action_type, "")
+
+        LOGGER.info(
+            _("%(count)s bags %(action)s successfully"),
+            {"count": len(self.successes), "action": action}
+        )
+        if self.failures and len(self.failures) > 0:
+            LOGGER.warning(
+                _("%(count)s bags not %(action)s"),
+                {"count": len(self.failures), "action": action}
+            )
+            LOGGER.warning(
+                _("Failed for the following folders: %s"),
+                ", ".join(self.failures)
+            )
+        if self.not_a_bag and len(self.not_a_bag) > 0:
+            LOGGER.warning(
+                _("%(count)s folders are not bags"),
+                {"count": len(self.not_a_bag)}
+            )
+            LOGGER.warning(
+                _("The following folders are not bags: %s"),
+                ", ".join(self.not_a_bag)
+            )
 
 
 def run(args: argparse.Namespace):
@@ -333,6 +501,32 @@ def run(args: argparse.Namespace):
             _("The following folders are not bags: %s"),
             ", ".join(not_a_bag)
         )
+
+def make_bag(bag_dir: "os.DirEntry[str]", args):
+    warnings.warn(
+        "Use GrabbagsRunner.make_bag() instead",
+        DeprecationWarning
+    )
+    if len(os.listdir(bag_dir.path)) == 0:
+        LOGGER.warning(_("%s is an empty directory. Skipped."), bag_dir.path)
+        return
+
+    if is_bag(bag_dir.path):
+        LOGGER.warning(_("%s is already a bag. Skipped."), bag_dir.path)
+        return
+
+    if args.no_system_files is True:
+        LOGGER.info(_("Cleaning %s of system files"), bag_dir.path)
+        grabbags.utils.remove_system_files(root=bag_dir.path)
+
+    bag = bagit.make_bag(
+            bag_dir.path,
+            bag_info=args.bag_info,
+            processes=args.processes,
+            checksums=args.checksums
+        )
+    successes.append(bag_dir.path)
+    LOGGER.info(_("Bagged %s"), bag.path)
 
 
 def main(

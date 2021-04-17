@@ -330,3 +330,187 @@ def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
     )
     grabbags.run(args)
     assert any("Found file not in manifest" in m for m in caplog.messages)
+
+
+
+class TestGrabbagsRunner:
+    def test_run_validate(self, fake_bag_path):
+        from grabbags import grabbags
+        from argparse import Namespace
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.validate_bag = Mock()
+        runner.run(args)
+        runner.validate_bag.assert_called()
+
+    def test_run_cleaned(self, fake_bag_path):
+        from grabbags import grabbags
+        from argparse import Namespace
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.clean_bag = Mock()
+        runner.run(args)
+        runner.clean_bag.assert_called()
+
+    def test_run_create(self, fake_bag_path):
+        from grabbags import grabbags
+        from argparse import Namespace
+        args = Namespace(
+            action_type='create',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.make_bag = Mock()
+        runner.run(args)
+        runner.make_bag.assert_called()
+
+    def test_run_create_invalid_bag_error(self, fake_bag_path, caplog):
+        from grabbags import grabbags
+        from bagit import BagError
+        from argparse import Namespace
+        runner = grabbags.GrabbagsRunner()
+        runner.make_bag = Mock(side_effect=BagError)
+        args = Namespace(
+            action_type='create',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        runner.run(args)
+        assert any("could not be bagged" in m for m in caplog.messages)
+
+    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog):
+        from grabbags import grabbags
+        from bagit import BagError
+        from argparse import Namespace
+        runner = grabbags.GrabbagsRunner()
+        runner.validate_bag = Mock(side_effect=BagError)
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        grabbags.run(args)
+        assert any("is invalid" in m for m in caplog.messages)
+
+    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog):
+        from grabbags import grabbags
+        from bagit import BagError
+        from argparse import Namespace
+
+        runner = grabbags.GrabbagsRunner()
+        runner.validate_bag = Mock(side_effect=BagError)
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                fake_bag_path
+            ]
+        )
+        runner.run(args)
+        assert any("is invalid" in m for m in caplog.messages)
+
+    def test_run_clean_invalid_bag_error(self, fake_bag_path, caplog):
+        from grabbags import grabbags
+        from bagit import BagError
+        from argparse import Namespace
+        runner = grabbags.GrabbagsRunner()
+        runner.clean_bag = Mock(side_effect=BagError)
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                fake_bag_path
+            ]
+        )
+
+        runner.run(args)
+        assert any("cannot be cleaned" in m for m in caplog.messages)
+
+    def test_run_create_empty_bag(self, tmpdir, caplog):
+        from argparse import Namespace
+        from grabbags import grabbags
+
+        (tmpdir / "empty_bag").ensure_dir()
+
+        args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            directories=[
+                tmpdir.strpath
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.run(args)
+        assert (tmpdir / "empty_bag" / "data").exists() is False
+        assert any("is an empty directory" in m for m in caplog.messages)
+
+    def test_run_clean_no_system_files_message(self, tmpdir, caplog):
+        from grabbags import grabbags
+        from argparse import Namespace
+        caplog.set_level(logging.INFO)
+
+        (tmpdir / "bag" / "text.txt").ensure()
+        run_args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=["md5"],
+            directories=[
+                tmpdir
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.run(run_args)
+
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                tmpdir
+            ]
+        )
+        runner.run(args)
+        assert any("No system files located" in m for m in caplog.messages)
+
+    def test_run_clean_not_found(self, tmpdir, caplog):
+        from grabbags import grabbags
+        from argparse import Namespace
+
+        (tmpdir / "bag" / "text.txt").ensure()
+        run_args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=["md5"],
+            directories=[
+                tmpdir
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.run(run_args)
+        (tmpdir / "bag" / "data" / "unexpected_file.txt").ensure()
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                tmpdir
+            ]
+        )
+        runner.run(args)
+        assert any("Found file not in manifest" in m for m in caplog.messages)
+
