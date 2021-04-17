@@ -326,16 +326,15 @@ class GrabbagsRunner:
             for payload_file in bag.compare_manifests_with_fs()[1]:
                 if grabbags.utils.is_system_file(payload_file):
                     LOGGER.info(
-                        "Removing system files from {}".format(bag_dir.path)
+                        "Removing system files from %s", bag_dir.path
                     )
                     os.remove(os.path.join(bag_dir.path, payload_file))
                 else:
                     LOGGER.warning(
-                        "Found file not in manifest: {}".format(payload_file)
+                        "Found file not in manifest: %s", payload_file
                     )
         else:
-            LOGGER.info(
-                "No system files located in {}".format(bag_dir.path))
+            LOGGER.info("No system files located in %s", bag_dir.path)
 
     def _run_action(self,
                     action_type: str,
