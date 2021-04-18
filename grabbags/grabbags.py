@@ -285,7 +285,18 @@ class GrabbagsRunner:
         self.failures: typing.List[str] = []
         self.not_a_bag: typing.List[str] = []
 
-    def validate_bag(self, bag_dir, args):
+    def validate_bag(
+            self,
+            bag_dir: "os.DirEntry[str]",
+            args: argparse.Namespace
+    ) -> None:
+        """Validate the bag at the given directory.
+
+        Args:
+            bag_dir: File path to a directory
+            args: Parsed user args.
+
+        """
         if not is_bag(bag_dir.path):
             LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
             self.not_a_bag.append(bag_dir.path)
@@ -313,7 +324,13 @@ class GrabbagsRunner:
     def find_bag_dirs(search_root: str) -> "typing.Iterable[os.DirEntry[str]]":
         yield from filter(lambda i: i.is_dir(), os.scandir(search_root))
 
-    def clean_bag(self, bag_dir):
+    def clean_bag(self, bag_dir: "os.DirEntry[str]") -> None:
+        """Clean bag at given directory.
+
+        Args:
+            bag_dir: File path to a directory
+
+        """
         if not is_bag(bag_dir.path):
             LOGGER.warning(_("%s is not a bag. Not cleaning."), bag_dir.path)
             return
@@ -371,7 +388,18 @@ class GrabbagsRunner:
                 f"args contain invalid action_type: {args.action_type}"
             )
 
-    def make_bag(self, bag_dir: "os.DirEntry[str]", args):
+    def make_bag(
+            self,
+            bag_dir: "os.DirEntry[str]",
+            args: argparse.Namespace
+    ) -> None:
+        """Generate a bag for the given directory.
+
+        Args:
+            bag_dir: File path to a directory
+            args: Parsed user args.
+
+        """
         if len(os.listdir(bag_dir.path)) == 0:
             LOGGER.warning(_("%s is an empty directory. Skipped."),
                            bag_dir.path)
@@ -395,6 +423,12 @@ class GrabbagsRunner:
         LOGGER.info(_("Bagged %s"), bag.path)
 
     def run(self, args: argparse.Namespace) -> None:
+        """Run the grabbags jobs based on the given user arguments.
+
+        Args:
+            args: Parsed user arguments.
+
+        """
         for bag_parent in args.directories:
             for bag_dir in self.find_bag_dirs(bag_parent):
 
@@ -403,7 +437,13 @@ class GrabbagsRunner:
                                  args=args)
 
 
-def run2(args: argparse.Namespace):
+def run2(args: argparse.Namespace) -> None:
+    """Run grabbags process with the parsed arguments provided.
+
+    Args:
+        args: Parsed arguments
+
+    """
     runner = GrabbagsRunner()
     runner.run(args)
 
@@ -508,7 +548,13 @@ def main(
         argv: typing.List[str] = None,
         runner: typing.Callable[[argparse.Namespace], None] = None
 ) -> None:
+    """Run the main command line entry point.
 
+    Args:
+        argv: command line arguments
+        runner: Callback function for processing after the cli args are parsed.
+
+    """
     argv = argv or sys.argv[1:]
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
