@@ -332,7 +332,6 @@ def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
     assert any("Found file not in manifest" in m for m in caplog.messages)
 
 
-
 class TestGrabbagsRunner:
     def test_run_validate(self, fake_bag_path):
         from grabbags import grabbags
@@ -513,4 +512,3 @@ class TestGrabbagsRunner:
         )
         runner.run(args)
         assert any("Found file not in manifest" in m for m in caplog.messages)
-
