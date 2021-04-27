@@ -333,7 +333,7 @@ def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
 
 
 class TestGrabbagsRunner:
-    def test_run_validate(self, fake_bag_path):
+    def test_run_validate(self, fake_bag_path, monkeypatch):
         from grabbags import grabbags
         from argparse import Namespace
         args = Namespace(
@@ -343,11 +343,12 @@ class TestGrabbagsRunner:
             ]
         )
         runner = grabbags.GrabbagsRunner()
-        runner.validate_bag = Mock()
+        execute = Mock()
+        monkeypatch.setattr(grabbags.ValidateBag, "execute", execute)
         runner.run(args)
-        runner.validate_bag.assert_called()
+        execute.assert_called()
 
-    def test_run_cleaned(self, fake_bag_path):
+    def test_run_cleaned(self, fake_bag_path, monkeypatch):
         from grabbags import grabbags
         from argparse import Namespace
         args = Namespace(
@@ -357,11 +358,12 @@ class TestGrabbagsRunner:
             ]
         )
         runner = grabbags.GrabbagsRunner()
-        runner.clean_bag = Mock()
+        execute = Mock()
+        monkeypatch.setattr(grabbags.CleanBag, "execute", execute)
         runner.run(args)
-        runner.clean_bag.assert_called()
+        execute.assert_called()
 
-    def test_run_create(self, fake_bag_path):
+    def test_run_create(self, fake_bag_path, monkeypatch):
         from grabbags import grabbags
         from argparse import Namespace
         args = Namespace(
@@ -371,16 +373,18 @@ class TestGrabbagsRunner:
             ]
         )
         runner = grabbags.GrabbagsRunner()
-        runner.make_bag = Mock()
+        execute = Mock()
+        monkeypatch.setattr(grabbags.MakeBag, "execute", execute)
         runner.run(args)
-        runner.make_bag.assert_called()
+        execute.assert_called()
 
-    def test_run_create_invalid_bag_error(self, fake_bag_path, caplog):
+    def test_run_create_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
         runner = grabbags.GrabbagsRunner()
-        runner.make_bag = Mock(side_effect=BagError)
+        execute = Mock(side_effect=BagError)
+        monkeypatch.setattr(grabbags.MakeBag, "execute", execute)
         args = Namespace(
             action_type='create',
             directories=[
@@ -390,28 +394,13 @@ class TestGrabbagsRunner:
         runner.run(args)
         assert any("could not be bagged" in m for m in caplog.messages)
 
-    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog):
+    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
         runner = grabbags.GrabbagsRunner()
-        runner.validate_bag = Mock(side_effect=BagError)
-        args = Namespace(
-            action_type='validate',
-            directories=[
-                fake_bag_path
-            ]
-        )
-        grabbags.run(args)
-        assert any("is invalid" in m for m in caplog.messages)
-
-    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog):
-        from grabbags import grabbags
-        from bagit import BagError
-        from argparse import Namespace
-
-        runner = grabbags.GrabbagsRunner()
-        runner.validate_bag = Mock(side_effect=BagError)
+        execute = Mock(side_effect=BagError)
+        monkeypatch.setattr(grabbags.ValidateBag, "execute", execute)
         args = Namespace(
             action_type='validate',
             directories=[
@@ -421,12 +410,14 @@ class TestGrabbagsRunner:
         runner.run(args)
         assert any("is invalid" in m for m in caplog.messages)
 
-    def test_run_clean_invalid_bag_error(self, fake_bag_path, caplog):
+
+    def test_run_clean_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
         runner = grabbags.GrabbagsRunner()
-        runner.clean_bag = Mock(side_effect=BagError)
+        execute = Mock(side_effect=BagError)
+        monkeypatch.setattr(grabbags.CleanBag, "execute", execute)
         args = Namespace(
             action_type='clean',
             directories=[
@@ -440,7 +431,7 @@ class TestGrabbagsRunner:
     def test_run_create_empty_bag(self, tmpdir, caplog):
         from argparse import Namespace
         from grabbags import grabbags
-
+        # .ensure() for files .ensure_dir for directories (makes a new file or dir if none exists)
         (tmpdir / "empty_bag").ensure_dir()
 
         args = Namespace(
@@ -512,3 +503,110 @@ class TestGrabbagsRunner:
         )
         runner.run(args)
         assert any("Found file not in manifest" in m for m in caplog.messages)
+
+    def test_run_clean_counting(self, monkeypatch, tmpdir, caplog):
+
+        from grabbags import grabbags
+        from argparse import Namespace
+        caplog.set_level(logging.INFO)
+
+        (tmpdir / "valid_bag" / "text.txt").ensure()
+        (tmpdir / "empty_bag").ensure_dir()
+
+        run_args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=["md5"],
+            directories=[
+                tmpdir
+            ]
+        )
+        create_runner = grabbags.GrabbagsRunner()
+        create_runner.run(run_args)
+        assert \
+            len(create_runner.successes) == 1 and \
+            len(create_runner.skipped) == 1
+
+        files = [
+            "sdadfasdfdsaf.mp4",
+            "asdfasdfasdffasdfasdf.mp4",
+            "still_image_1.jpg",
+            "still_image_2.jpg",
+            "is_this_an_evil_confusing_access_copy.mp4"
+        ]
+        for f in files:
+            (tmpdir / "skipped" / f).ensure()
+
+        for num in range(20):
+            (tmpdir / "skipped" / f"evil_file{num}.mp4").ensure()
+
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                tmpdir
+            ]
+        )
+        cleaning_runner = grabbags.GrabbagsRunner()
+        cleaning_runner.run(args)
+
+        assert any("No system files located" in m for m in caplog.messages)
+        assert len(cleaning_runner.successes) == 0, "wrong successes"
+        assert len(cleaning_runner.skipped) == 0, "wrong skipped"
+        assert len(cleaning_runner.not_a_bag) == 2
+
+    def test_run_clean_counting_only(self, monkeypatch, tmpdir):
+
+        from grabbags import grabbags
+        from argparse import Namespace
+
+        (tmpdir / "valid_bag" / "text.txt").ensure()
+        (tmpdir / "empty_bag").ensure_dir()
+
+        run_args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=["md5"],
+            directories=[
+                tmpdir
+            ]
+        )
+        create_runner = grabbags.GrabbagsRunner()
+        create_runner.run(run_args)
+        assert \
+            len(create_runner.successes) == 1 and \
+            len(create_runner.skipped) == 1
+
+    def test_run_clean_only(self, monkeypatch, tmpdir):
+        from grabbags import grabbags
+        from argparse import Namespace
+
+        for f in [
+            "sdadfasdfdsaf.mp4",
+            "asdfasdfasdffasdfasdf.mp4",
+            "still_image_1.jpg",
+            "still_image_2.jpg",
+            "is_this_an_evil_confusing_access_copy.mp4"
+        ]:
+            (tmpdir / "skipped" / f).ensure()
+
+        for num in range(20):
+            (tmpdir / "skipped" / f"evil_file{num}.mp4").ensure()
+
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                tmpdir
+            ]
+        )
+        cleaning_runner = grabbags.GrabbagsRunner()
+        cleaning_runner.run(args)
+
+        assert len(cleaning_runner.successes) == 0, "wrong successes"
+        assert len(cleaning_runner.skipped) == 0, "wrong skipped"
+        assert len(cleaning_runner.not_a_bag) == 1
+
+
