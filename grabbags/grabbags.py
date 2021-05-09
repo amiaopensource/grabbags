@@ -307,12 +307,7 @@ class GrabbagsRunner:
         try:
             action.execute(bag_dir=bag_dir.path)
         except bagit.BagError as error:
-            if action_type == "validate":
-                LOGGER.error(
-                    _("%(bag)s is invalid: %(error)s"),
-                    {"bag": bag_dir.path, "error": error}
-                )
-            elif action_type == "clean":
+            if action_type == "clean":
                 LOGGER.error(
                     _("%(bag)s cannot be cleaned: %(error)s"),
                     {"bag": bag_dir.path, "error": error}
@@ -322,6 +317,8 @@ class GrabbagsRunner:
                     _("%(bag)s could not be bagged: %(error)s"),
                     {"bag": bag_dir.path, "error": error}
                 )
+            elif action_type == "validate":
+                pass
             else:
                 raise ValueError(
                     f"args contain invalid action_type: {args.action_type}"
@@ -487,21 +484,31 @@ class ValidateBag(AbsAction):
 
         bag = bagit.Bag(bag_dir)
         # validate throws a BagError or BagValidationError
-        bag.validate(
-            processes=self.args.processes,
-            fast=self.args.fast,
-            completeness_only=self.args.no_checksums,
-        )
-        self.successes.append(bag_dir)
-        if self.args.fast:
-            self.logger.info(_("%s valid according to Payload-Oxum"), bag_dir)
-        elif self.args.no_checksums:
-            self.logger.info(
-                _("%s valid according to Payload-Oxum and file manifest"),
-                bag_dir
+        try:
+            bag.validate(
+                processes=self.args.processes,
+                fast=self.args.fast,
+                completeness_only=self.args.no_checksums,
             )
-        else:
-            self.logger.info(_("%s is valid"), bag_dir)
+            self.successes.append(bag_dir)
+            if self.args.fast:
+                self.logger.info(
+                    _("%s valid according to Payload-Oxum (Bag size)"),
+                    bag_dir)
+            elif self.args.no_checksums:
+                self.logger.info(
+                    _("%s valid according to Payload-Oxum (Bag size), and all "
+                      "paths in manifest correct"),
+                    bag_dir
+                )
+            else:
+                self.logger.info(_("%s is valid"), bag_dir)
+        except bagit.BagError as error:
+            self.failures.append(bag_dir)
+            self.logger.error(
+                _("%(bag)s is invalid: %(error)s"),
+                {"bag": bag_dir, "error": error}
+            )
 
 
 class CleanBag(AbsAction):

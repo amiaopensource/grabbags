@@ -1,10 +1,11 @@
+import argparse
 import logging
 import os
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY, call
 
 import grabbags.utils
 import pytest
-
+import bagit
 
 def test_batch_validate():
     # provide a directory
@@ -400,8 +401,13 @@ class TestGrabbagsRunner:
         from argparse import Namespace
         runner = grabbags.GrabbagsRunner()
         execute = Mock(side_effect=BagError)
-        monkeypatch.setattr(grabbags.ValidateBag, "execute", execute)
+        monkeypatch.setattr(grabbags, "is_bag", lambda x: True)
+        monkeypatch.setattr(grabbags.bagit.Bag, "_open", Mock())
+        monkeypatch.setattr(grabbags.bagit.Bag, "validate", execute)
         args = Namespace(
+            processes=1,
+            fast=False,
+            no_checksums=False,
             action_type='validate',
             directories=[
                 fake_bag_path
@@ -410,8 +416,8 @@ class TestGrabbagsRunner:
         runner.run(args)
         assert any("is invalid" in m for m in caplog.messages)
 
-
-    def test_run_clean_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
+    def test_run_clean_invalid_bag_error(self, fake_bag_path, caplog,
+                                         monkeypatch):
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
@@ -610,3 +616,135 @@ class TestGrabbagsRunner:
         assert len(cleaning_runner.not_a_bag) == 1
 
 
+class TestValidateBag:
+    def test_fails_is_bag(self, monkeypatch):
+        from grabbags import grabbags
+        args = argparse.Namespace()
+
+        logger = logging.getLogger(__name__)
+        runner = grabbags.ValidateBag(args, logger)
+        some_directory = "something"
+
+        with monkeypatch.context() as mp:
+            mp.setattr(grabbags, "is_bag", lambda x: False)
+            runner.execute(some_directory)
+
+        assert len(runner.not_a_bag) == 1 and \
+               runner.not_a_bag[0] == some_directory
+        assert len(runner.successes) == 0
+
+    def test_success(self, monkeypatch):
+        from grabbags import grabbags
+        some_directory = "something"
+        run_args = argparse.Namespace(
+            action_type='validate',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=False,
+            directories=[
+                some_directory
+            ]
+        )
+
+        logger = logging.getLogger(__name__)
+        runner = grabbags.ValidateBag(run_args, logger)
+
+        with monkeypatch.context() as mp:
+            mp.setattr(grabbags, "is_bag", lambda x: True)
+
+            bag = Mock()
+            mp.setattr(grabbags.bagit, "Bag", bag)
+
+            runner.execute(some_directory)
+
+        assert len(runner.successes) == 1 and \
+               runner.successes[0] == some_directory
+
+    @pytest.mark.parametrize(
+        "exception_type, exception_message",
+        [
+            (bagit.BagValidationError, "somethings is wrong with your bag"),
+            (bagit.ChecksumMismatch, "somethings is wrong with your checksum"),
+            (bagit.FileMissing, "a file missing YO!!!"),
+            (bagit.UnexpectedFile, "You have an unexpected file"),
+        ]
+    )
+    def test_bag_validation_failure(self, monkeypatch,
+                                    exception_type,
+                                    exception_message):
+        from grabbags import grabbags
+        some_directory = "something"
+        run_args = argparse.Namespace(
+            action_type='validate',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=False,
+            directories=[
+                some_directory
+            ]
+        )
+
+        logger = logging.getLogger(__name__)
+        runner = grabbags.ValidateBag(run_args, logger)
+
+        with monkeypatch.context() as mp:
+            mp.setattr(grabbags, "is_bag", lambda x: True)
+
+            mp.setattr(grabbags.bagit.Bag, "_open", Mock())
+            mp.setattr(
+                grabbags.bagit.Bag, "validate",
+                Mock(
+                    side_effect=exception_type(exception_message)
+                )
+            )
+
+            runner.execute(some_directory)
+
+        assert len(runner.successes) == 0 and \
+               len(runner.failures) == 1
+
+    def test_no_checks_completeness_only(self, monkeypatch):
+        from grabbags import grabbags
+        some_directory = "something"
+        run_args = argparse.Namespace(
+            action_type='validate',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=True,
+            directories=[
+                some_directory
+            ]
+        )
+
+        logger = logging.getLogger(__name__)
+
+        with monkeypatch.context() as mp:
+            runner = grabbags.ValidateBag(run_args, logger)
+            mp.setattr(grabbags, "is_bag", lambda x: True)
+
+            bag = Mock(validate=Mock())
+
+            def mock_bag(*args, **kwargs):
+                return bag
+
+            mp.setattr(grabbags.bagit, "Bag", mock_bag)
+
+            runner.execute(some_directory)
+
+            bag.validate.assert_any_call(
+                processes=ANY,
+                fast=ANY,
+                completeness_only=True
+            )
+
+        assert len(runner.successes) == 1 and \
+               runner.successes[0] == some_directory
