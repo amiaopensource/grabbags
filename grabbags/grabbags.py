@@ -482,6 +482,9 @@ class ValidateBag(AbsAction):
             self.not_a_bag.append(bag_dir)
             return
 
+        self.validate(bag_dir)
+
+    def validate(self, bag_dir: str) -> None:
         bag = bagit.Bag(bag_dir)
         # validate throws a BagError or BagValidationError
         try:
@@ -525,6 +528,9 @@ class CleanBag(AbsAction):
             self.not_a_bag.append(bag_dir)
             return
 
+        self.clean(bag_dir)
+
+    def clean(self, bag_dir: str):
         bag = bagit.Bag(bag_dir)
         if bag.compare_manifests_with_fs()[1]:
             for payload_file in bag.compare_manifests_with_fs()[1]:
