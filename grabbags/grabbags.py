@@ -318,6 +318,7 @@ class GrabbagsRunner:
                     {"bag": bag_dir.path, "error": error}
                 )
             elif action_type == "validate":
+                # This will be removed as soon as the other actions are ready
                 pass
             else:
                 raise ValueError(
@@ -385,6 +386,7 @@ def run2(args: argparse.Namespace) -> None:
 
 
 def run(args: argparse.Namespace):
+    warnings.warn("Use run2 instead", PendingDeprecationWarning)
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.action_type == "validate":

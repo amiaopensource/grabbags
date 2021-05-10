@@ -160,6 +160,7 @@ def fake_bag_path(monkeypatch):
     return fake_path_name
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_validate(monkeypatch, fake_bag_path):
     from grabbags import grabbags
     from argparse import Namespace
@@ -175,6 +176,7 @@ def test_run_validate(monkeypatch, fake_bag_path):
     validate_bag.assert_called()
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_cleaned(monkeypatch, fake_bag_path):
     from grabbags import grabbags
     from argparse import Namespace
@@ -190,6 +192,7 @@ def test_run_cleaned(monkeypatch, fake_bag_path):
     clean_bag.assert_called()
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_create(monkeypatch, fake_bag_path):
     from grabbags import grabbags
     from argparse import Namespace
@@ -205,6 +208,7 @@ def test_run_create(monkeypatch, fake_bag_path):
     make_bag.assert_called()
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_create_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     from grabbags import grabbags
     from bagit import BagError
@@ -221,6 +225,7 @@ def test_run_create_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     assert any("could not be bagged" in m for m in caplog.messages)
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_validate_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     from grabbags import grabbags
     from bagit import BagError
@@ -237,6 +242,7 @@ def test_run_validate_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     assert any("is invalid" in m for m in caplog.messages)
 
 
+@pytest.mark.filterwarnings("ignore::PendingDeprecationWarning")
 def test_run_clean_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     from grabbags import grabbags
     from bagit import BagError
@@ -253,6 +259,9 @@ def test_run_clean_invalid_bag_error(monkeypatch, fake_bag_path, caplog):
     assert any("cannot be cleaned" in m for m in caplog.messages)
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning",
+                            "ignore::PendingDeprecationWarning"
+                            )
 def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
     from argparse import Namespace
     from grabbags import grabbags
@@ -275,6 +284,9 @@ def test_run_create_empty_bag(monkeypatch, tmpdir, caplog):
     assert any("is an empty directory" in m for m in caplog.messages)
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning",
+                            "ignore::PendingDeprecationWarning"
+                            )
 def test_run_clean_no_system_files_message(monkeypatch, tmpdir, caplog):
 
     from grabbags import grabbags
@@ -304,6 +316,9 @@ def test_run_clean_no_system_files_message(monkeypatch, tmpdir, caplog):
     assert any("No system files located" in m for m in caplog.messages)
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning",
+                            "ignore::PendingDeprecationWarning"
+                            )
 def test_run_clean_not_found(monkeypatch, tmpdir, caplog):
 
     from grabbags import grabbags
