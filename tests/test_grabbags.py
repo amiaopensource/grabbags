@@ -763,3 +763,160 @@ class TestValidateBag:
 
         assert len(runner.successes) == 1 and \
                runner.successes[0] == some_directory
+
+
+class TestClean:
+
+    @pytest.fixture()
+    def empty_bag_path(self, tmpdir):
+        source_dir = tmpdir.ensure_dir()
+
+        (tmpdir / "bag-info.txt").write_text(
+            """Bag-Software-Agent: bagit.py v1.8.1 <https://github.com/LibraryOfCongress/bagit-python>
+Bagging-Date: 2021-05-04
+Payload-Oxum: 13864945.6
+""",
+            encoding="utf-8")
+
+        (tmpdir / "bagit.txt").write_text(
+            """BagIt-Version: 0.97
+Tag-File-Character-Encoding: UTF-8
+""",
+            encoding="utf-8")
+
+        (tmpdir / "manifest-md5.txt").ensure()
+        (tmpdir / "tagmanifest-md5.txt").ensure()
+        (tmpdir / "data").ensure_dir()
+
+        return source_dir
+
+    def test_empty_clean(self, empty_bag_path):
+        from grabbags import grabbags
+        some_directory = empty_bag_path.strpath
+        run_args = argparse.Namespace(
+            action_type='clean',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=True,
+            directories=[
+                some_directory
+            ]
+        )
+
+        runner = grabbags.CleanBag(run_args)
+        runner.execute(some_directory)
+        assert runner.successful is True
+
+    def test_clean_manifest_includes_hidden_file(self, empty_bag_path):
+        # skips a directory that is not a bag and contains hidden files
+        # skips a directory that is not a bag and contains NO hidden files
+        # creates a test bag that contains a manifest file that INCLUDES hidden
+        # files
+        from grabbags import grabbags
+        new_bag_path = empty_bag_path
+        some_directory = new_bag_path.strpath
+        run_args = argparse.Namespace(
+            action_type='clean',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=True,
+            directories=[
+                some_directory
+            ]
+        )
+
+        (new_bag_path / "manifest-md5.txt").write_text(
+            """4990c459b26dd57fc4aac9d918ac61b4  data/DSC_0068.JPG
+4990c459b26dd57fc4aac9d918ac61b4  data/.DS_Store
+            """,
+            encoding="utf-8"
+        )
+
+        (new_bag_path / "data" / "DSC_0068.JPG").ensure()
+        (new_bag_path / "data" / ".DS_Store").ensure()
+
+        runner = grabbags.CleanBag(run_args)
+        runner.execute(some_directory)
+        assert runner.successful is True and \
+               (new_bag_path / "data" / ".DS_Store").exists() and \
+               (new_bag_path / "data" / "DSC_0068.JPG").exists()
+
+    def test_clean_manifest_does_not_include_hidden_file(self, empty_bag_path):
+        # creates a test bag that contains a manifest with NO hidden files, but
+        # hidden files are present in the data folder
+        from grabbags import grabbags
+        new_bag_path = empty_bag_path
+        some_directory = new_bag_path.strpath
+        run_args = argparse.Namespace(
+            action_type='clean',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=True,
+            directories=[
+                some_directory
+            ]
+        )
+
+        (new_bag_path / "manifest-md5.txt").write_text(
+            """4990c459b26dd57fc4aac9d918ac61b4  data/DSC_0068.JPG
+            """,
+            encoding="utf-8"
+        )
+
+        (new_bag_path / "data" / "DSC_0068.JPG").ensure()
+        (new_bag_path / "data" / ".DS_Store").ensure()
+
+        runner = grabbags.CleanBag(run_args)
+        runner.execute(some_directory)
+        assert runner.successful is True and \
+               not (new_bag_path / "data" / ".DS_Store").exists() and \
+               (new_bag_path / "data" / "DSC_0068.JPG").exists()
+
+    def test_clean_manifest_includes_hidden_file_and_extra_hidden_file(
+            self, empty_bag_path):
+
+        # EDGE CASE creates a test bag that contains a manifest file that
+        # INCLUDES hidden files in the manifest AND additional hidden files NOT
+        # in the manifest.
+        from grabbags import grabbags
+        new_bag_path = empty_bag_path
+        some_directory = new_bag_path.strpath
+        run_args = argparse.Namespace(
+            action_type='clean',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            fast=False,
+            no_checksums=True,
+            directories=[
+                some_directory
+            ]
+        )
+
+        (new_bag_path / "manifest-md5.txt").write_text(
+            """4990c459b26dd57fc4aac9d918ac61b4  data/DSC_0068.JPG
+4990c459b26dd57fc4aac9d918ac61b4  data/.DS_Store
+            """,
+            encoding="utf-8"
+        )
+
+        (new_bag_path / "data" / "DSC_0068.JPG").ensure()
+        (new_bag_path / "data" / ".DS_Store").ensure()
+        (new_bag_path / "data" / "images" / ".DS_Store").ensure()
+
+        runner = grabbags.CleanBag(run_args)
+        runner.execute(some_directory)
+        assert runner.successful is True and \
+               (new_bag_path / "data" / ".DS_Store").exists() and \
+               (new_bag_path / "data" / "DSC_0068.JPG").exists() and \
+               not (new_bag_path / "data" / "images" / ".DS_Store").exists()

@@ -454,8 +454,8 @@ def run(args: argparse.Namespace):
 
 
 class AbsAction(abc.ABC):
-    def __init__(self, args: argparse.Namespace, logger: logging.Logger):
-        self.logger = logger
+    def __init__(self, args: argparse.Namespace, logger: logging.Logger = None):
+        self.logger = logger or logging.getLogger(__name__)
         self.args = args
         self.successes = []
         self.failures = []
@@ -471,6 +471,11 @@ class AbsAction(abc.ABC):
         # AND i want a count of directories that are not bags and their paths
         self.not_a_bag = []
 
+        # successful tells if the action was successful or not. False if failed
+        #   True if succeeded. None if not run at all
+        self.successful: typing.Optional[bool] = None
+
+
     @abc.abstractmethod
     def execute(self, bag_dir: str):
         """Run the command."""
@@ -482,6 +487,7 @@ class ValidateBag(AbsAction):
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Skipped."), bag_dir)
             self.not_a_bag.append(bag_dir)
+            self.successful = True
             return
 
         self.validate(bag_dir)
@@ -508,15 +514,26 @@ class ValidateBag(AbsAction):
                 )
             else:
                 self.logger.info(_("%s is valid"), bag_dir)
+            self.successful = True
         except bagit.BagError as error:
             self.failures.append(bag_dir)
             self.logger.error(
                 _("%(bag)s is invalid: %(error)s"),
                 {"bag": bag_dir, "error": error}
             )
+            self.successful = False
 
 
 class CleanBag(AbsAction):
+    """CleanBag cleans directory containing bag.
+
+    A successful 'clean' is defined by hidden files that are not included in a
+        manifest being deleted from the bag without error.
+
+    A successful 'clean' is also defined by a directory that is not a bag and
+        is skipped. This is the desired behavior. We do not clean directories
+        that are not bags.
+    """
 
     def execute(self, bag_dir: str):
         """Clean bag at given directory.
@@ -528,9 +545,11 @@ class CleanBag(AbsAction):
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Not cleaning."), bag_dir)
             self.not_a_bag.append(bag_dir)
+            self.successful = True
             return
 
         self.clean(bag_dir)
+        self.successful = True
 
     def clean(self, bag_dir: str):
         bag = bagit.Bag(bag_dir)
@@ -547,6 +566,7 @@ class CleanBag(AbsAction):
                     )
         else:
             self.logger.info("No system files located in %s", bag_dir)
+
 
 
 class MakeBag(AbsAction):
