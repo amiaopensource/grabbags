@@ -286,10 +286,20 @@ class GrabbagsRunner:
         self.failures: typing.List[str] = []
         self.not_a_bag: typing.List[str] = []
         self.skipped: typing.List[str] = []
+        self.results: typing.List[typing.Dict[str, typing.Any]] = []
 
     @staticmethod
     def find_bag_dirs(search_root: str) -> "typing.Iterable[os.DirEntry[str]]":
         yield from filter(lambda i: i.is_dir(), os.scandir(search_root))
+
+    def get_report(self, args) -> str:
+        actions: typing.Dict[str, AbsAction] = {
+            "validate": ValidateBag(args, LOGGER),
+            "clean": CleanBag(args, LOGGER),
+            "create": MakeBag(args, LOGGER)
+        }
+        action = actions[args.action_type]
+        return action.create_report(args, self)
 
     def _run_action(self,
                     action_type: str,
@@ -300,7 +310,6 @@ class GrabbagsRunner:
             "validate": ValidateBag(args, LOGGER),
             "clean": CleanBag(args, LOGGER),
             "create": MakeBag(args, LOGGER)
-
         }
 
         action: AbsAction = actions[action_type]
@@ -329,6 +338,7 @@ class GrabbagsRunner:
             self.failures += action.failures
             self.not_a_bag += action.not_a_bag
             self.skipped += action.skipped
+            self.results.append(action.results)
 
     def run(self, args: argparse.Namespace) -> None:
         """Run the grabbags jobs based on the given user arguments.
@@ -354,6 +364,10 @@ def run2(args: argparse.Namespace) -> None:
     """
     runner = GrabbagsRunner()
     runner.run(args)
+    report = runner.get_report(args)
+
+    LOGGER.info(report)
+    # ==========================================================================
 
     action: str = {
         'validate': 'validated',
@@ -479,6 +493,12 @@ class AbsAction(abc.ABC):
         #   True if succeeded. None if not run at all
         self.successful: typing.Optional[bool] = None
 
+        self.results = {}
+
+    @abc.abstractmethod
+    def create_report(self, args, runner):
+        """Create a string report"""
+
     @abc.abstractmethod
     def execute(self, bag_dir: str):
         """Run the command."""
@@ -490,6 +510,7 @@ class ValidateBag(AbsAction):
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Skipped."), bag_dir)
             self.not_a_bag.append(bag_dir)
+            self.results['not_a_bag'] = True
             self.successful = True
             return
 
@@ -526,6 +547,10 @@ class ValidateBag(AbsAction):
             )
             self.successful = False
 
+    def create_report(self, args, runner):
+        # TODO: create_report
+        pass
+
 
 class CleanBag(AbsAction):
     """CleanBag cleans directory containing bag.
@@ -548,6 +573,7 @@ class CleanBag(AbsAction):
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Not cleaning."), bag_dir)
             self.not_a_bag.append(bag_dir)
+            self.results['not_a_bag'] = True
             self.successful = True
             return
 
@@ -570,6 +596,10 @@ class CleanBag(AbsAction):
         else:
             self.logger.info("No system files located in %s", bag_dir)
 
+    def create_report(self, args, runner):
+        # TODO: create_report
+        pass
+
 
 class MakeBag(AbsAction):
 
@@ -580,15 +610,22 @@ class MakeBag(AbsAction):
             bag_dir: File path to a directory
 
         """
+        self.results["path"] = bag_dir
         if len(os.listdir(bag_dir)) == 0:
             self.logger.warning(
                 _("%s is an empty directory. Skipped."), bag_dir)
             self.skipped.append(bag_dir)
+            self.results["empty_dir"] = True
+            self.results["skipped"] = True
+            self.successful = True
             return
 
         if is_bag(bag_dir):
             self.logger.warning(_("%s is already a bag. Skipped."), bag_dir)
             self.skipped.append(bag_dir)
+            self.results["already_a_bag"] = True
+            self.results["skipped"] = True
+            self.successful = True
             return
 
         if self.args.no_system_files is True:
@@ -603,7 +640,29 @@ class MakeBag(AbsAction):
         )
         self.successes.append(bag_dir)
         self.logger.info(_("Bagged %s"), bag.path)
+        self.successful = True
 
+    def create_report(self, args, runner):
+        already_bags = 0
+
+        for result in runner.results:
+            if "already_a_bag" in result and result['already_a_bag'] is True:
+                already_bags += 1
+
+        empty_dirs = 0
+
+        for result in runner.results:
+            if "empty_dir" in result and result['empty_dir'] is True:
+                empty_dirs += 1
+
+        report_lines = [
+            "Summary Report:",
+            f"{len(runner.successes)} bags created successfully",
+            f"{len(runner.failures)} failures",
+            f"{empty_dirs} empty directories skipped",
+            f"{already_bags} directories are already a bag"
+        ]
+        return "\n".join(report_lines) + "\n"
 
 def main(
         argv: typing.List[str] = None,

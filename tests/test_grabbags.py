@@ -920,3 +920,181 @@ Tag-File-Character-Encoding: UTF-8
                (new_bag_path / "data" / ".DS_Store").exists() and \
                (new_bag_path / "data" / "DSC_0068.JPG").exists() and \
                not (new_bag_path / "data" / "images" / ".DS_Store").exists()
+
+
+class TestMakeBag:
+    @pytest.mark.parametrize("checksum_algorithm", [
+        "sha224",
+        "md5",
+        "sha384",
+        "sha1",
+        "sha256",
+        "sha3_384",
+        "sha3_256",
+        "sha3_512",
+        "blake2b",
+        "blake2s",
+        "sha3_224",
+        "sha512"
+    ])
+    def test_make_bag_with_various_checksums(self, tmpdir, checksum_algorithm):
+        from grabbags import grabbags
+        new_bag_path = tmpdir / "bagroot"
+        new_bag_path.ensure_dir()
+        (new_bag_path / "somefile.txt").ensure()
+
+        run_args = argparse.Namespace(
+            action_type='make',
+            no_system_files=False,
+            bag_info={},
+            processes=1,
+            checksums=[
+                checksum_algorithm
+            ],
+            fast=False,
+            directories=[
+                new_bag_path.strpath
+            ]
+        )
+        runner = grabbags.MakeBag(run_args)
+        runner.execute(new_bag_path.strpath)
+
+        assert (new_bag_path / "data").exists()
+        assert (new_bag_path / "data" / "somefile.txt").exists()
+
+        assert (new_bag_path / "bagit.txt").exists()
+        assert (new_bag_path / "bag-info.txt").exists()
+        assert (new_bag_path / f"tagmanifest-{checksum_algorithm}.txt").exists()
+        assert (new_bag_path / f"manifest-{checksum_algorithm}.txt").exists()
+        assert runner.successful is True
+
+    def test_empty_bag(self, tmpdir):
+        from argparse import Namespace
+        from grabbags import grabbags
+
+        empty_bag_dir = (tmpdir / "empty_bag")
+        empty_bag_dir.ensure_dir()
+
+        args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            directories=[
+                empty_bag_dir.strpath
+            ]
+        )
+        runner = grabbags.MakeBag(args)
+        runner.execute(empty_bag_dir)
+
+        assert (tmpdir / "empty_bag" / "data").exists() is False
+        assert len(runner.skipped) == 1
+        assert runner.successful is True
+        assert runner.results['skipped'] is True
+
+    def test_already_a_bag(self,tmpdir):
+        from argparse import Namespace
+        from grabbags import grabbags
+
+        bag_dir = tmpdir / "bag"
+        (bag_dir / "data").ensure_dir()
+        (bag_dir / "bagit.txt").ensure()
+
+        args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            directories=[
+                bag_dir.strpath
+            ]
+        )
+        runner = grabbags.MakeBag(args)
+        runner.execute(bag_dir.strpath)
+
+        assert len(runner.skipped) == 1
+        assert runner.successful is True
+        assert runner.results['skipped'] is True
+
+    #TODO Make tests to test whether proper "skipping" message appears when
+    # something is already a bag or is an empty directory
+
+    def test_report_basic(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            directories=[
+                "fakedir"
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.failures = []
+        runner.skipped = []
+        runner.results = []
+
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+4 bags created successfully
+0 failures
+0 empty directories skipped
+0 directories are already a bag
+"""
+
+    def test_report_skipped_direc(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='create',
+            no_system_files=True,
+            bag_info={},
+            processes=1,
+            checksums=[],
+            directories=[
+                "fakedir"
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.failures = []
+        runner.skipped = []
+        runner.results = [
+            {
+                "already_a_bag": True,
+                "path": "directory5",
+                "skipped": True
+            },
+            {
+                "empty_dir": True,
+                "path": "directory6",
+                "skipped": True
+            }
+        ]
+
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+4 bags created successfully
+0 failures
+1 empty directories skipped
+1 directories are already a bag
+"""
+
