@@ -454,7 +454,11 @@ def run(args: argparse.Namespace):
 
 
 class AbsAction(abc.ABC):
-    def __init__(self, args: argparse.Namespace, logger: logging.Logger = None):
+    def __init__(
+            self,
+            args: argparse.Namespace, logger: logging.Logger = None
+    ) -> None:
+
         self.logger = logger or logging.getLogger(__name__)
         self.args = args
         self.successes = []
@@ -474,7 +478,6 @@ class AbsAction(abc.ABC):
         # successful tells if the action was successful or not. False if failed
         #   True if succeeded. None if not run at all
         self.successful: typing.Optional[bool] = None
-
 
     @abc.abstractmethod
     def execute(self, bag_dir: str):
@@ -566,7 +569,6 @@ class CleanBag(AbsAction):
                     )
         else:
             self.logger.info("No system files located in %s", bag_dir)
-
 
 
 class MakeBag(AbsAction):
