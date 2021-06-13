@@ -101,9 +101,14 @@ class VersionFromMetadata(VersionStrategy):
     """Gets version info from the package metadata"""
     def get_version(self) -> str:
         try:
-            return metadata.version(__package__)
+            return self.get_package_metadata()
         except metadata.PackageNotFoundError as error:
             raise InvalidStrategy from error
+
+    @staticmethod
+    def get_package_metadata() -> str:
+        """Read version info from the package metadata."""
+        return metadata.version(__package__)
 
 
 class VersionFromGitCommit(VersionStrategy):
