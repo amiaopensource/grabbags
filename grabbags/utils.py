@@ -113,6 +113,18 @@ class VersionFromGitCommit(VersionStrategy):
         git_exec = shutil.which('git')
         if git_exec is None:
             raise InvalidStrategy("Git not available")
+        return self.get_git_hash(git_exec)
+
+    @staticmethod
+    def get_git_hash(git_exec: str) -> str:
+        """Get the version hash value of the git
+
+        Args:
+            git_exec: path to git executable
+
+        Returns: Returns a hash value from the head
+
+        """
         try:
             git_commit_hash_command = [
                 git_exec,
