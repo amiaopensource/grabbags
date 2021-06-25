@@ -101,9 +101,14 @@ class VersionFromMetadata(VersionStrategy):
     """Gets version info from the package metadata"""
     def get_version(self) -> str:
         try:
-            return metadata.version(__package__)
+            return self.get_package_metadata()
         except metadata.PackageNotFoundError as error:
             raise InvalidStrategy from error
+
+    @staticmethod
+    def get_package_metadata() -> str:
+        """Read version info from the package metadata."""
+        return metadata.version(__package__)
 
 
 class VersionFromGitCommit(VersionStrategy):
@@ -113,6 +118,18 @@ class VersionFromGitCommit(VersionStrategy):
         git_exec = shutil.which('git')
         if git_exec is None:
             raise InvalidStrategy("Git not available")
+        return self.get_git_hash(git_exec)
+
+    @staticmethod
+    def get_git_hash(git_exec: str) -> str:
+        """Get the version hash value of the git
+
+        Args:
+            git_exec: path to git executable
+
+        Returns: Returns a hash value from the head
+
+        """
         try:
             git_commit_hash_command = [
                 git_exec,
