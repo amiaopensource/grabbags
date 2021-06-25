@@ -244,12 +244,9 @@ def clean_bag(bag_dir):
                 )
                 os.remove(os.path.join(bag_dir.path, payload_file))
             else:
-                LOGGER.warning(
-                    "Found file not in manifest: {}".format(payload_file)
-                )
+                LOGGER.warning("Found file not in manifest: %s", payload_file)
     else:
-        LOGGER.info(
-            "No system files located in {}".format(bag_dir.path))
+        LOGGER.info("No system files located in %s", bag_dir.path)
 
 
 def make_bag(bag_dir: "os.DirEntry[str]", args):
