@@ -504,6 +504,7 @@ class AbsAction(abc.ABC):
 class ValidateBag(AbsAction):
 
     def execute(self, bag_dir: str):
+        self.results['path'] = bag_dir
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Skipped."), bag_dir)
             self.not_a_bag.append(bag_dir)
@@ -515,8 +516,10 @@ class ValidateBag(AbsAction):
 
     def validate(self, bag_dir: str) -> None:
         bag = bagit.Bag(bag_dir)
+
         # validate throws a BagError or BagValidationError
         try:
+
             bag.validate(
                 processes=self.args.processes,
                 fast=self.args.fast,
@@ -545,8 +548,28 @@ class ValidateBag(AbsAction):
             self.successful = False
 
     def create_report(self, args, runner):
-        # TODO: create_report
-        pass
+
+        not_a_bag = set()
+        for result in runner.results:
+            if "not_a_bag" in result and result["not_a_bag"]:
+                not_a_bag.add(result["path"])
+        
+        successes = set()
+        for success in runner.successes:
+            successes.add(success)
+
+        failures = set()
+        for failure in runner.failures:
+            failures.add(failure)
+
+        report = [
+            "Summary Report:",
+            f"{len(successes)} bags validated successfully",
+            f"{len(failures)} failures",
+            f"{len(not_a_bag)} directories are not bags",
+            ""
+        ]
+        return "\n".join(report)
 
 
 class CleanBag(AbsAction):
@@ -567,6 +590,7 @@ class CleanBag(AbsAction):
             bag_dir: File path to a directory
 
         """
+        self.results['path'] = bag_dir
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Not cleaning."), bag_dir)
             self.not_a_bag.append(bag_dir)
@@ -587,10 +611,12 @@ class CleanBag(AbsAction):
                     )
                     os.remove(os.path.join(bag_dir, payload_file))
                 else:
+
                     self.logger.warning(
                         "Found file not in manifest: %s", payload_file
                     )
         else:
+            self.skipped.append(bag_dir)
             self.logger.info("No system files located in %s", bag_dir)
 
     def create_report(self, args, runner):
@@ -659,7 +685,10 @@ class MakeBag(AbsAction):
             f"{empty_dirs} empty directories skipped",
             f"{already_bags} directories are already a bag"
         ]
+        # TODO: add paths of empty directories
+        # TODO: add paths of already_bags
         return "\n".join(report_lines) + "\n"
+
 
 def main(
         argv: typing.List[str] = None,
