@@ -574,7 +574,7 @@ class TestGrabbagsRunner:
 
         assert any("No system files located" in m for m in caplog.messages)
         assert len(cleaning_runner.successes) == 0, "wrong successes"
-        assert len(cleaning_runner.skipped) == 0, "wrong skipped"
+        assert len(cleaning_runner.skipped) == 1, "wrong skipped"
         assert len(cleaning_runner.not_a_bag) == 2
 
     def test_run_clean_counting_only(self, monkeypatch, tmpdir):
@@ -764,6 +764,164 @@ class TestValidateBag:
         assert len(runner.successes) == 1 and \
                runner.successes[0] == some_directory
 
+    def test_report_not_a_bag(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                "directory1",
+                "directory2",
+            ]
+        )
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = []
+        runner.results = [
+            {
+                'not_a_bag': True,
+                "path": "directory1",
+            },
+            {
+                'not_a_bag': True,
+                "path": "directory2",
+            }
+        ]
+
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags validated successfully
+0 failures
+2 directories are not bags
+"""
+
+    def test_report_basic(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.failures = []
+        runner.skipped = []
+        runner.results = [
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+4 bags validated successfully
+0 failures
+0 directories are not bags
+"""
+
+    def test_report_empty(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = []
+        runner.skipped = []
+        runner.results = [
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags validated successfully
+0 failures
+0 directories are not bags
+"""
+    def test_report_failed(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='validate',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+
+        runner.skipped = []
+        runner.results = [
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags validated successfully
+4 failures
+0 directories are not bags
+"""
+
 
 class TestClean:
 
@@ -920,6 +1078,184 @@ Tag-File-Character-Encoding: UTF-8
                (new_bag_path / "data" / ".DS_Store").exists() and \
                (new_bag_path / "data" / "DSC_0068.JPG").exists() and \
                not (new_bag_path / "data" / "images" / ".DS_Store").exists()
+
+    def test_report_basic(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.failures = []
+        runner.skipped = []
+        runner.results = [
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+4 bags cleaned successfully
+0 failures
+0 bags are already clean
+0 directories are not bags
+"""
+
+    def test_report_failures(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.skipped = []
+        runner.results = [
+
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags cleaned successfully
+4 failures
+0 bags are already clean
+0 directories are not bags
+"""
+
+    def test_report_already_cleaned(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = [
+        ]
+        runner.skipped = [
+            "directory1",
+            "directory2",
+            "directory3",
+            "directory4",
+        ]
+        runner.results = [
+
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory1",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory2",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory3",
+            # },
+            # {
+            #     "not_a_bag": False,
+            #     "path": "directory4",
+            # }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags cleaned successfully
+0 failures
+4 bags are already clean
+0 directories are not bags
+"""
+
+    def test_report_not_bags(self):
+        from argparse import Namespace
+        from grabbags import grabbags
+        args = Namespace(
+            action_type='clean',
+            directories=[
+                "directory_root",
+            ]
+        )
+
+        runner = grabbags.GrabbagsRunner()
+        runner.successes = []
+        runner.failures = []
+        runner.skipped = []
+        runner.results = [
+            {
+                "not_a_bag": True,
+                "path": "directory1",
+            },
+            {
+                "not_a_bag": True,
+                "path": "directory2",
+            },
+            {
+                "not_a_bag": True,
+                "path": "directory3",
+            },
+            {
+                "not_a_bag": True,
+                "path": "directory4",
+            }
+        ]
+        report = runner.get_report(args)
+        assert report == """Summary Report:
+0 bags cleaned successfully
+0 failures
+0 bags are already clean
+4 directories are not bags
+"""
 
 
 class TestMakeBag:
