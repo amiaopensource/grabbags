@@ -575,7 +575,11 @@ class TestGrabbagsRunner:
         assert any("No system files located" in m for m in caplog.messages)
         assert len(cleaning_runner.successes) == 0, "wrong successes"
         assert len(cleaning_runner.skipped) == 1, "wrong skipped"
-        assert len(cleaning_runner.not_a_bag) == 2
+        not_a_bag = [
+            x for x in cleaning_runner.results
+            if 'not_a_bag' in x and x['not_a_bag'] is True
+        ]
+        assert len(not_a_bag) == 2
 
     def test_run_clean_counting_only(self, monkeypatch, tmpdir):
 
@@ -628,7 +632,11 @@ class TestGrabbagsRunner:
 
         assert len(cleaning_runner.successes) == 0, "wrong successes"
         assert len(cleaning_runner.skipped) == 0, "wrong skipped"
-        assert len(cleaning_runner.not_a_bag) == 1
+        not_a_bag = [
+            x for x in cleaning_runner.results
+            if 'not_a_bag' in x and x['not_a_bag'] is True
+        ]
+        assert len(not_a_bag) == 1
 
 
 class TestValidateBag:
@@ -643,9 +651,8 @@ class TestValidateBag:
         with monkeypatch.context() as mp:
             mp.setattr(grabbags, "is_bag", lambda x: False)
             runner.execute(some_directory)
-
-        assert len(runner.not_a_bag) == 1 and \
-               runner.not_a_bag[0] == some_directory
+        assert runner.results['not_a_bag'] is True and \
+               runner.results['path'] == some_directory
         assert len(runner.successes) == 0
 
     def test_success(self, monkeypatch):
@@ -814,24 +821,7 @@ class TestValidateBag:
         ]
         runner.failures = []
         runner.skipped = []
-        runner.results = [
-            # {
-            #     "not_a_bag": False,
-            #     "path": "directory1",
-            # },
-            # {
-            #     "not_a_bag": False,
-            #     "path": "directory2",
-            # },
-            # {
-            #     "not_a_bag": False,
-            #     "path": "directory3",
-            # },
-            # {
-            #     "not_a_bag": False,
-            #     "path": "directory4",
-            # }
-        ]
+        runner.results = []
         report = runner.get_report(args)
         assert report == """Summary Report:
 4 bags validated successfully

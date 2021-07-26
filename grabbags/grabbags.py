@@ -13,6 +13,8 @@ import bagit
 from grabbags.bags import is_bag
 import grabbags.utils
 
+SUMMARY_REPORT_HEADER = "Summary Report:"
+
 successes = []
 failures = []
 not_a_bag = []
@@ -281,7 +283,7 @@ class GrabbagsRunner:
     def __init__(self) -> None:
         self.successes: typing.List[str] = []
         self.failures: typing.List[str] = []
-        self.not_a_bag: typing.List[str] = []
+        # self.not_a_bag: typing.List[str] = []
         self.skipped: typing.List[str] = []
         self.results: typing.List[typing.Dict[str, typing.Any]] = []
 
@@ -333,7 +335,9 @@ class GrabbagsRunner:
         finally:
             self.successes += action.successes
             self.failures += action.failures
-            self.not_a_bag += action.not_a_bag
+            # if 'not_a_bag' in action.results and \
+            #         action.results['not_a_bag'] is True:
+            #     self.not_a_bag.append(action.results['path'])
             self.skipped += action.skipped
             self.results.append(action.results)
 
@@ -385,14 +389,20 @@ def run2(args: argparse.Namespace) -> None:
             _("Failed for the following folders: %s"),
             ", ".join(runner.failures)
         )
-    if runner.not_a_bag and len(runner.not_a_bag) > 0:
+
+    not_a_bag_results = [
+        result for result in runner.results
+        if 'not_a_bag' in result and result['not_a_bag'] is True
+    ]
+
+    if not_a_bag_results:
         LOGGER.warning(
             _("%(count)s folders are not bags"),
-            {"count": len(runner.not_a_bag)}
+            {"count": len(not_a_bag_results)}
         )
         LOGGER.warning(
             _("The following folders are not bags: %s"),
-            ", ".join(runner.not_a_bag)
+            ", ".join(not_a_bag_results)
         )
 
 
@@ -465,6 +475,8 @@ def run(args: argparse.Namespace):
 
 
 class AbsAction(abc.ABC):
+    """Abstract base class for creating actions."""
+
     def __init__(
             self,
             args: argparse.Namespace, logger: logging.Logger = None
@@ -480,17 +492,16 @@ class AbsAction(abc.ABC):
         # things that are already bags-
         self.skipped = []
 
-        # not a bag is used in the context when you expect that bags are
-        # already present
-        # ex. i'm validating bags and i want to skip things that aren't bags
-        # AND i want a count of directories that are not bags and their paths
-        self.not_a_bag = []
-
         # successful tells if the action was successful or not. False if failed
         #   True if succeeded. None if not run at all
         self.successful: typing.Optional[bool] = None
 
         self.results = {}
+        # not a bag is used in the context when you expect that bags are
+        # already present
+        # ex. i'm validating bags and i want to skip things that aren't bags
+        # AND i want a count of directories that are not bags and their paths
+
 
     @abc.abstractmethod
     def create_report(self, args, runner):
@@ -502,12 +513,12 @@ class AbsAction(abc.ABC):
 
 
 class ValidateBag(AbsAction):
+    """Validate bag action."""
 
     def execute(self, bag_dir: str):
         self.results['path'] = bag_dir
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Skipped."), bag_dir)
-            self.not_a_bag.append(bag_dir)
             self.results['not_a_bag'] = True
             self.successful = True
             return
@@ -515,6 +526,7 @@ class ValidateBag(AbsAction):
         self.validate(bag_dir)
 
     def validate(self, bag_dir: str) -> None:
+        """Validate directory."""
         bag = bagit.Bag(bag_dir)
 
         # validate throws a BagError or BagValidationError
@@ -549,24 +561,17 @@ class ValidateBag(AbsAction):
 
     def create_report(self, args, runner):
 
-        not_a_bag = set()
-        for result in runner.results:
-            if "not_a_bag" in result and result["not_a_bag"]:
-                not_a_bag.add(result["path"])
-        
-        successes = set()
-        for success in runner.successes:
-            successes.add(success)
-
-        failures = set()
-        for failure in runner.failures:
-            failures.add(failure)
+        not_a_bag_results = {
+            result["path"]
+            for result in runner.results
+            if "not_a_bag" in result and result["not_a_bag"]
+        }
 
         report = [
-            "Summary Report:",
-            f"{len(successes)} bags validated successfully",
-            f"{len(failures)} failures",
-            f"{len(not_a_bag)} directories are not bags",
+            SUMMARY_REPORT_HEADER,
+            f"{len(runner.successes)} bags validated successfully",
+            f"{len(runner.failures)} failures",
+            f"{len(not_a_bag_results)} directories are not bags",
             ""
         ]
         return "\n".join(report)
@@ -593,7 +598,6 @@ class CleanBag(AbsAction):
         self.results['path'] = bag_dir
         if not is_bag(bag_dir):
             self.logger.warning(_("%s is not a bag. Not cleaning."), bag_dir)
-            self.not_a_bag.append(bag_dir)
             self.results['not_a_bag'] = True
             self.successful = True
             return
@@ -602,6 +606,7 @@ class CleanBag(AbsAction):
         self.successful = True
 
     def clean(self, bag_dir: str):
+        """Clean directory."""
         bag = bagit.Bag(bag_dir)
         if bag.compare_manifests_with_fs()[1]:
             for payload_file in bag.compare_manifests_with_fs()[1]:
@@ -640,7 +645,7 @@ class CleanBag(AbsAction):
                 not_bags.add(result['path'])
 
         report = [
-            "Summary Report:",
+            SUMMARY_REPORT_HEADER,
             f"{len(cleaned)} bags cleaned successfully",
             f"{len(failed)} failures",
             f"{len(already_cleaned)} bags are already clean",
@@ -651,6 +656,7 @@ class CleanBag(AbsAction):
 
 
 class MakeBag(AbsAction):
+    """Bag creation action."""
 
     def execute(self, bag_dir: str):
         """Generate a bag for the given directory.
@@ -705,7 +711,7 @@ class MakeBag(AbsAction):
                 empty_dirs += 1
 
         report_lines = [
-            "Summary Report:",
+            SUMMARY_REPORT_HEADER,
             f"{len(runner.successes)} bags created successfully",
             f"{len(runner.failures)} failures",
             f"{empty_dirs} empty directories skipped",
