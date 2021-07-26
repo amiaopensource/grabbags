@@ -618,10 +618,36 @@ class CleanBag(AbsAction):
         else:
             self.skipped.append(bag_dir)
             self.logger.info("No system files located in %s", bag_dir)
+        # TODO: error handling for cleaning bags
 
     def create_report(self, args, runner):
-        # TODO: create_report
-        pass
+
+        cleaned = set()
+        for success in runner.successes:
+            cleaned.add(success)
+
+        failed = set()
+        for failure in runner.failures:
+            failed.add(failure)
+
+        already_cleaned = set()
+        for skipped in runner.skipped:
+            already_cleaned.add(skipped)
+
+        not_bags = set()
+        for result in runner.results:
+            if 'not_a_bag' in result and result['not_a_bag'] is True:
+                not_bags.add(result['path'])
+
+        report = [
+            "Summary Report:",
+            f"{len(cleaned)} bags cleaned successfully",
+            f"{len(failed)} failures",
+            f"{len(already_cleaned)} bags are already clean",
+            f"{len(not_bags)} directories are not bags",
+            ""
+        ]
+        return "\n".join(report)
 
 
 class MakeBag(AbsAction):
