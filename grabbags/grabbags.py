@@ -335,9 +335,6 @@ class GrabbagsRunner:
         finally:
             self.successes += action.successes
             self.failures += action.failures
-            # if 'not_a_bag' in action.results and \
-            #         action.results['not_a_bag'] is True:
-            #     self.not_a_bag.append(action.results['path'])
             self.skipped += action.skipped
             self.results.append(action.results)
 
