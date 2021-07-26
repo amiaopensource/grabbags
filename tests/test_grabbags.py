@@ -1,11 +1,12 @@
 import argparse
 import logging
 import os
-from unittest.mock import Mock, ANY, call
+from unittest.mock import Mock, ANY
 
 import grabbags.utils
 import pytest
 import bagit
+
 
 def test_batch_validate():
     # provide a directory
@@ -394,7 +395,9 @@ class TestGrabbagsRunner:
         runner.run(args)
         execute.assert_called()
 
-    def test_run_create_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
+    def test_run_create_invalid_bag_error(
+            self, fake_bag_path, caplog, monkeypatch):
+
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
@@ -410,7 +413,9 @@ class TestGrabbagsRunner:
         runner.run(args)
         assert any("could not be bagged" in m for m in caplog.messages)
 
-    def test_run_validate_invalid_bag_error(self, fake_bag_path, caplog, monkeypatch):
+    def test_run_validate_invalid_bag_error(
+            self, fake_bag_path, caplog, monkeypatch):
+
         from grabbags import grabbags
         from bagit import BagError
         from argparse import Namespace
@@ -452,7 +457,6 @@ class TestGrabbagsRunner:
     def test_run_create_empty_bag(self, tmpdir, caplog):
         from argparse import Namespace
         from grabbags import grabbags
-        # .ensure() for files .ensure_dir for directories (makes a new file or dir if none exists)
         (tmpdir / "empty_bag").ensure_dir()
 
         args = Namespace(
@@ -867,6 +871,7 @@ class TestValidateBag:
 0 failures
 0 directories are not bags
 """
+
     def test_report_failed(self):
         from argparse import Namespace
         from grabbags import grabbags
@@ -1290,7 +1295,9 @@ class TestMakeBag:
 
         assert (new_bag_path / "bagit.txt").exists()
         assert (new_bag_path / "bag-info.txt").exists()
-        assert (new_bag_path / f"tagmanifest-{checksum_algorithm}.txt").exists()
+        assert (
+                new_bag_path / f"tagmanifest-{checksum_algorithm}.txt"
+        ).exists()
         assert (new_bag_path / f"manifest-{checksum_algorithm}.txt").exists()
         assert runner.successful is True
 
@@ -1319,7 +1326,7 @@ class TestMakeBag:
         assert runner.successful is True
         assert runner.results['skipped'] is True
 
-    def test_already_a_bag(self,tmpdir):
+    def test_already_a_bag(self, tmpdir):
         from argparse import Namespace
         from grabbags import grabbags
 
@@ -1344,8 +1351,8 @@ class TestMakeBag:
         assert runner.successful is True
         assert runner.results['skipped'] is True
 
-    #TODO Make tests to test whether proper "skipping" message appears when
-    # something is already a bag or is an empty directory
+    # TODO: Make tests to test whether proper "skipping" message appears when
+    #  something is already a bag or is an empty directory
 
     def test_report_basic(self):
         from argparse import Namespace
@@ -1423,4 +1430,3 @@ class TestMakeBag:
 1 empty directories skipped
 1 directories are already a bag
 """
-
