@@ -1,3 +1,4 @@
+import abc
 import argparse
 import gettext
 import logging
@@ -5,11 +6,15 @@ import os
 import re
 import sys
 import typing
+import warnings
 
 import bagit
 
 from grabbags.bags import is_bag
 import grabbags.utils
+
+SUMMARY_REPORT_HEADER = "Summary Report:"
+
 successes = []
 failures = []
 not_a_bag = []
@@ -58,9 +63,6 @@ class BagArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         argparse.ArgumentParser.__init__(self, *args, **kwargs)
         self.set_defaults(bag_info={})
-
-
-
 
 
 def _make_parser():
@@ -199,10 +201,13 @@ def _configure_logging(opts):
 
 
 def validate_bag(bag_dir, args):
+    warnings.warn(
+        "Use GrabbagsRunner.validate_bag() instead", DeprecationWarning
+    )
     if not is_bag(bag_dir.path):
         LOGGER.warning(_("%s is not a bag. Skipped."), bag_dir.path)
         not_a_bag.append(bag_dir.path)
-        return 
+        return
 
     bag = bagit.Bag(bag_dir.path)
     # validate throws a BagError or BagValidationError
@@ -220,10 +225,14 @@ def validate_bag(bag_dir, args):
             bag_dir.path
         )
     else:
-        LOGGER.info(_("%s is valid"), bag_dir.path) 
+        LOGGER.info(_("%s is valid"), bag_dir.path)
 
 
 def clean_bag(bag_dir):
+    warnings.warn(
+        "Use GrabbagsRunner.clean_bag() instead",
+        DeprecationWarning
+    )
     if not is_bag(bag_dir.path):
         LOGGER.warning(_("%s is not a bag. Not cleaning."), bag_dir.path)
         return
@@ -237,15 +246,16 @@ def clean_bag(bag_dir):
                 )
                 os.remove(os.path.join(bag_dir.path, payload_file))
             else:
-                LOGGER.warning(
-                    "Found file not in manifest: {}".format(payload_file)
-                )
+                LOGGER.warning("Found file not in manifest: %s", payload_file)
     else:
-        LOGGER.info(
-            "No system files located in {}".format(bag_dir.path))
+        LOGGER.info("No system files located in %s", bag_dir.path)
 
 
 def make_bag(bag_dir: "os.DirEntry[str]", args):
+    warnings.warn(
+        "Use GrabbagsRunner.make_bag() instead",
+        DeprecationWarning
+    )
     if len(os.listdir(bag_dir.path)) == 0:
         LOGGER.warning(_("%s is an empty directory. Skipped."), bag_dir.path)
         return
@@ -268,7 +278,133 @@ def make_bag(bag_dir: "os.DirEntry[str]", args):
     LOGGER.info(_("Bagged %s"), bag.path)
 
 
+class GrabbagsRunner:
+
+    def __init__(self) -> None:
+        self.successes: typing.List[str] = []
+        self.failures: typing.List[str] = []
+        # self.not_a_bag: typing.List[str] = []
+        self.skipped: typing.List[str] = []
+        self.results: typing.List[typing.Dict[str, typing.Any]] = []
+
+    @staticmethod
+    def find_bag_dirs(search_root: str) -> "typing.Iterable[os.DirEntry[str]]":
+        yield from filter(lambda i: i.is_dir(), os.scandir(search_root))
+
+    def get_report(self, args) -> str:
+        actions: typing.Dict[str, AbsAction] = {
+            "validate": ValidateBag(args, LOGGER),
+            "clean": CleanBag(args, LOGGER),
+            "create": MakeBag(args, LOGGER)
+        }
+        action = actions[args.action_type]
+        return action.create_report(args, self)
+
+    def _run_action(self,
+                    action_type: str,
+                    bag_dir: 'os.DirEntry[str]',
+                    args: argparse.Namespace) -> None:
+
+        actions: typing.Dict[str, AbsAction] = {
+            "validate": ValidateBag(args, LOGGER),
+            "clean": CleanBag(args, LOGGER),
+            "create": MakeBag(args, LOGGER)
+        }
+
+        action: AbsAction = actions[action_type]
+        try:
+            action.execute(bag_dir=bag_dir.path)
+        except bagit.BagError as error:
+            if action_type == "clean":
+                LOGGER.error(
+                    _("%(bag)s cannot be cleaned: %(error)s"),
+                    {"bag": bag_dir.path, "error": error}
+                )
+            elif action_type == "create":
+                LOGGER.error(
+                    _("%(bag)s could not be bagged: %(error)s"),
+                    {"bag": bag_dir.path, "error": error}
+                )
+            elif action_type == "validate":
+                # This will be removed as soon as the other actions are ready
+                pass
+            else:
+                raise ValueError(
+                    f"args contain invalid action_type: {args.action_type}"
+                )
+        finally:
+            self.successes += action.successes
+            self.failures += action.failures
+            self.skipped += action.skipped
+            self.results.append(action.results)
+
+    def run(self, args: argparse.Namespace) -> None:
+        """Run the grabbags jobs based on the given user arguments.
+
+        Args:
+            args: Parsed user arguments.
+
+        """
+        for bag_parent in args.directories:
+            for bag_dir in self.find_bag_dirs(bag_parent):
+
+                self._run_action(action_type=args.action_type,
+                                 bag_dir=bag_dir,
+                                 args=args)
+
+
+def run2(args: argparse.Namespace) -> None:
+    """Run grabbags process with the parsed arguments provided.
+
+    Args:
+        args: Parsed arguments
+
+    """
+    runner = GrabbagsRunner()
+    runner.run(args)
+    report = runner.get_report(args)
+
+    LOGGER.info(report)
+    # ==========================================================================
+
+    action: str = {
+        'validate': 'validated',
+        'clean': 'cleaned',
+        'create': 'created'
+    }.get(args.action_type, "")
+
+    LOGGER.info(
+        _("%(count)s bags %(action)s successfully"),
+        {"count": len(runner.successes), "action": action}
+    )
+    if runner.failures and len(runner.failures) > 0:
+        LOGGER.warning(
+            _("%(count)s bags not %(action)s"),
+            {"count": len(runner.failures), "action": action}
+        )
+        LOGGER.warning(
+            _("Failed for the following folders: %s"),
+            ", ".join(runner.failures)
+        )
+
+    not_a_bag_results = [
+        result for result in runner.results
+        if 'not_a_bag' in result and result['not_a_bag'] is True
+    ]
+
+    if not_a_bag_results:
+        LOGGER.warning(
+            _("%(count)s folders are not bags"),
+            {"count": len(not_a_bag_results)}
+        )
+        LOGGER.warning(
+            _("The following folders are not bags: %s"),
+            ", ".join(not_a_bag_results)
+        )
+
+
 def run(args: argparse.Namespace):
+    warnings.warn("Use run2 instead", PendingDeprecationWarning)
     for bag_parent in args.directories:
         for bag_dir in filter(lambda i: i.is_dir(), os.scandir(bag_parent)):
             if args.action_type == "validate":
@@ -293,7 +429,7 @@ def run(args: argparse.Namespace):
             elif args.action_type == "create":
                 try:
                     make_bag(bag_dir, args)
-                    #successes.append(bag_dir.path)
+                    # successes.append(bag_dir.path)
                 except bagit.BagError as error:
                     LOGGER.error(
                         _("%(bag)s could not be bagged: %(error)s"),
@@ -335,11 +471,265 @@ def run(args: argparse.Namespace):
         )
 
 
+class AbsAction(abc.ABC):
+    """Abstract base class for creating actions."""
+
+    def __init__(
+            self,
+            args: argparse.Namespace, logger: logging.Logger = None
+    ) -> None:
+
+        self.logger = logger or logging.getLogger(__name__)
+        self.args = args
+        self.successes = []
+        self.failures = []
+
+        # skipped is used in the context of new bag creation
+        # ex. i'm makin' new bags but i'm skippin' empty directories and
+        # things that are already bags-
+        self.skipped = []
+
+        # successful tells if the action was successful or not. False if failed
+        #   True if succeeded. None if not run at all
+        self.successful: typing.Optional[bool] = None
+
+        self.results = {}
+        # not a bag is used in the context when you expect that bags are
+        # already present
+        # ex. i'm validating bags and i want to skip things that aren't bags
+        # AND i want a count of directories that are not bags and their paths
+
+
+    @abc.abstractmethod
+    def create_report(self, args, runner):
+        """Create a string report"""
+
+    @abc.abstractmethod
+    def execute(self, bag_dir: str):
+        """Run the command."""
+
+
+class ValidateBag(AbsAction):
+    """Validate bag action."""
+
+    def execute(self, bag_dir: str):
+        self.results['path'] = bag_dir
+        if not is_bag(bag_dir):
+            self.logger.warning(_("%s is not a bag. Skipped."), bag_dir)
+            self.results['not_a_bag'] = True
+            self.successful = True
+            return
+
+        self.validate(bag_dir)
+
+    def validate(self, bag_dir: str) -> None:
+        """Validate directory."""
+        bag = bagit.Bag(bag_dir)
+
+        # validate throws a BagError or BagValidationError
+        try:
+
+            bag.validate(
+                processes=self.args.processes,
+                fast=self.args.fast,
+                completeness_only=self.args.no_checksums,
+            )
+            self.successes.append(bag_dir)
+            if self.args.fast:
+                self.logger.info(
+                    _("%s valid according to Payload-Oxum (Bag size)"),
+                    bag_dir)
+            elif self.args.no_checksums:
+                self.logger.info(
+                    _("%s valid according to Payload-Oxum (Bag size), and all "
+                      "paths in manifest correct"),
+                    bag_dir
+                )
+            else:
+                self.logger.info(_("%s is valid"), bag_dir)
+            self.successful = True
+        except bagit.BagError as error:
+            self.failures.append(bag_dir)
+            self.logger.error(
+                _("%(bag)s is invalid: %(error)s"),
+                {"bag": bag_dir, "error": error}
+            )
+            self.successful = False
+
+    def create_report(self, args, runner):
+
+        not_a_bag_results = {
+            result["path"]
+            for result in runner.results
+            if "not_a_bag" in result and result["not_a_bag"]
+        }
+
+        report = [
+            SUMMARY_REPORT_HEADER,
+            f"{len(runner.successes)} bags validated successfully",
+            f"{len(runner.failures)} failures",
+            f"{len(not_a_bag_results)} directories are not bags",
+            ""
+        ]
+        return "\n".join(report)
+
+
+class CleanBag(AbsAction):
+    """CleanBag cleans directory containing bag.
+
+    A successful 'clean' is defined by hidden files that are not included in a
+        manifest being deleted from the bag without error.
+
+    A successful 'clean' is also defined by a directory that is not a bag and
+        is skipped. This is the desired behavior. We do not clean directories
+        that are not bags.
+    """
+
+    def execute(self, bag_dir: str):
+        """Clean bag at given directory.
+
+        Args:
+            bag_dir: File path to a directory
+
+        """
+        self.results['path'] = bag_dir
+        if not is_bag(bag_dir):
+            self.logger.warning(_("%s is not a bag. Not cleaning."), bag_dir)
+            self.results['not_a_bag'] = True
+            self.successful = True
+            return
+
+        self.clean(bag_dir)
+        self.successful = True
+
+    def clean(self, bag_dir: str):
+        """Clean directory."""
+        bag = bagit.Bag(bag_dir)
+        if bag.compare_manifests_with_fs()[1]:
+            for payload_file in bag.compare_manifests_with_fs()[1]:
+                if grabbags.utils.is_system_file(payload_file):
+                    self.logger.info(
+                        "Removing system files from %s", bag_dir
+                    )
+                    os.remove(os.path.join(bag_dir, payload_file))
+                else:
+
+                    self.logger.warning(
+                        "Found file not in manifest: %s", payload_file
+                    )
+        else:
+            self.skipped.append(bag_dir)
+            self.logger.info("No system files located in %s", bag_dir)
+        # TODO: error handling for cleaning bags
+
+    def create_report(self, args, runner):
+
+        cleaned = set()
+        for success in runner.successes:
+            cleaned.add(success)
+
+        failed = set()
+        for failure in runner.failures:
+            failed.add(failure)
+
+        already_cleaned = set()
+        for skipped in runner.skipped:
+            already_cleaned.add(skipped)
+
+        not_bags = set()
+        for result in runner.results:
+            if 'not_a_bag' in result and result['not_a_bag'] is True:
+                not_bags.add(result['path'])
+
+        report = [
+            SUMMARY_REPORT_HEADER,
+            f"{len(cleaned)} bags cleaned successfully",
+            f"{len(failed)} failures",
+            f"{len(already_cleaned)} bags are already clean",
+            f"{len(not_bags)} directories are not bags",
+            ""
+        ]
+        return "\n".join(report)
+
+
+class MakeBag(AbsAction):
+    """Bag creation action."""
+
+    def execute(self, bag_dir: str):
+        """Generate a bag for the given directory.
+
+        Args:
+            bag_dir: File path to a directory
+
+        """
+        self.results["path"] = bag_dir
+        if len(os.listdir(bag_dir)) == 0:
+            self.logger.warning(
+                _("%s is an empty directory. Skipped."), bag_dir)
+            self.skipped.append(bag_dir)
+            self.results["empty_dir"] = True
+            self.results["skipped"] = True
+            self.successful = True
+            return
+
+        if is_bag(bag_dir):
+            self.logger.warning(_("%s is already a bag. Skipped."), bag_dir)
+            self.skipped.append(bag_dir)
+            self.results["already_a_bag"] = True
+            self.results["skipped"] = True
+            self.successful = True
+            return
+
+        if self.args.no_system_files is True:
+            self.logger.info(_("Cleaning %s of system files"), bag_dir)
+            grabbags.utils.remove_system_files(root=bag_dir)
+
+        bag = bagit.make_bag(
+            bag_dir,
+            bag_info=self.args.bag_info,
+            processes=self.args.processes,
+            checksums=self.args.checksums
+        )
+        self.successes.append(bag_dir)
+        self.logger.info(_("Bagged %s"), bag.path)
+        self.successful = True
+
+    def create_report(self, args, runner):
+        already_bags = 0
+
+        for result in runner.results:
+            if "already_a_bag" in result and result['already_a_bag'] is True:
+                already_bags += 1
+
+        empty_dirs = 0
+
+        for result in runner.results:
+            if "empty_dir" in result and result['empty_dir'] is True:
+                empty_dirs += 1
+
+        report_lines = [
+            SUMMARY_REPORT_HEADER,
+            f"{len(runner.successes)} bags created successfully",
+            f"{len(runner.failures)} failures",
+            f"{empty_dirs} empty directories skipped",
+            f"{already_bags} directories are already a bag"
+        ]
+        # TODO: add paths of empty directories
+        # TODO: add paths of already_bags
+        return "\n".join(report_lines) + "\n"
+
+
 def main(
         argv: typing.List[str] = None,
         runner: typing.Callable[[argparse.Namespace], None] = None
 ) -> None:
+    """Run the main command line entry point.
 
+    Args:
+        argv: command line arguments
+        runner: Callback function for processing after the cli args are parsed.
+
+    """
     argv = argv or sys.argv[1:]
     parser: argparse.ArgumentParser = _make_parser()
     args: argparse.Namespace = parser.parse_args(args=argv)
@@ -368,7 +758,7 @@ def main(
 
     _configure_logging(args)
 
-    runner = runner or run
+    runner = runner or run2
     runner(args)
 
 

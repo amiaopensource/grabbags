@@ -41,7 +41,7 @@ def is_system_file(file_path) -> bool:
         True if the file a system file,
         False if it's not
 
-    """
+    """  # noqa
 
     if os.path.isdir(file_path):
         return False

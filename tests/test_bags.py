@@ -5,6 +5,7 @@ import shutil
 import grabbags.bags
 import pathlib
 
+
 @pytest.fixture()
 def sample_bags(tmpdir_factory):
     data_dir = tmpdir_factory.mktemp("data")
@@ -20,7 +21,7 @@ def sample_bags(tmpdir_factory):
                 ],
                 "files": [
                     ["bagit.txt"],
-                    ["data", "preservation","napl0154.mov"],
+                    ["data", "preservation", "napl0154.mov"],
                     ["data", "service", "napl0154.mp4"],
                     ["manifest-sha256.txt"],
                     ["manifest-sha512.txt"],
